@@ -93,7 +93,8 @@ process QC_Brain_Extraction_DWI {
     --images_no_bet $dwi\
     --images_bet_mask $mask\
     --skip $params.bet_dwi_skip\
-    --nb_threads $params.bet_dwi_nb_threads
+    --nb_threads $params.bet_dwi_nb_threads\
+    --nb_columns $params.bet_dwi_nb_columns
     """
 }
 
@@ -127,7 +128,8 @@ process QC_Brain_Extraction_T1 {
     --images_no_bet $t1\
     --images_bet_mask $mask\
     --skip $params.bet_t1_skip\
-    --nb_threads $params.bet_t1_nb_threads
+    --nb_threads $params.bet_t1_nb_threads\
+    --nb_columns $params.bet_t1_nb_columns
     """
 }
 
@@ -153,7 +155,8 @@ process QC_Denoise_DWI {
     dmriqc_generic.py "Denoise DWI" report_denoise_dwi.html\
     --images $dwi\
     --skip $params.denoise_dwi_skip\
-    --nb_threads $params.denoise_dwi_nb_threads
+    --nb_threads $params.denoise_dwi_nb_threads\
+    --nb_columns $params.denoise_dwi_nb_columns
     """
 }
 
@@ -179,7 +182,8 @@ process QC_Denoise_T1 {
     dmriqc_generic.py "Denoise T1" report_denoise_t1.html\
     --images $t1\
     --skip $params.denoise_t1_skip\
-    --nb_threads $params.denoise_t1_nb_threads
+    --nb_threads $params.denoise_t1_nb_threads\
+    --nb_columns $params.denoise_t1_nb_columns
     """
 }
 
@@ -258,7 +262,8 @@ process QC_Eddy_Topup {
     dmriqc_generic.py "Eddy Topup" report_eddy_topup.html\
     --images *_eddy_topup.nii.gz\
     --skip $params.eddy_topup_skip\
-    --nb_threads $params.eddy_topup_nb_threads
+    --nb_threads $params.eddy_topup_nb_threads\
+    --nb_columns $params.eddy_topup_nb_columns
     """
 }
 
@@ -287,7 +292,8 @@ process QC_Resample_DWI {
     dmriqc_generic.py "Resample DWI" report_resampled_dwi.html\
     --images $b0 --wm $wm --gm $gm --csf $csf\
     --skip $params.resample_dwi_skip\
-    --nb_threads $params.resample_dwi_nb_threads
+    --nb_threads $params.resample_dwi_nb_threads\
+    --nb_columns $params.resample_dwi_nb_columns
     """
 }
 
@@ -313,7 +319,8 @@ process QC_Resample_T1 {
     dmriqc_generic.py "Resample T1" report_resampled_t1.html\
     --images $t1\
     --skip $params.resample_t1_skip\
-    --nb_threads $params.resample_t1_nb_threads
+    --nb_threads $params.resample_t1_nb_threads\
+    --nb_columns $params.resample_t1_nb_columns
     """
 }
 
@@ -387,7 +394,8 @@ process QC_DTI {
     --evecs_v1 $evecs_v1\
     --wm $wm --gm $gm --csf $csf\
     --skip $params.dti_skip\
-    --nb_threads $params.dti_nb_threads
+    --nb_threads $params.dti_nb_threads\
+    --nb_columns $params.dti_nb_columns
     """
 }
 
@@ -470,7 +478,8 @@ process QC_FODF {
     --nufo $nufo\
     --wm $wm --gm $gm --csf $csf\
     --skip $params.fodf_skip\
-    --nb_threads $params.fodf_nb_threads
+    --nb_threads $params.fodf_nb_threads\
+    --nb_columns $params.fodf_nb_columns
     """
 }
 
@@ -540,7 +549,8 @@ process QC_Segment_Tissues {
     dmriqc_tissues.py report_segment_tissues.html\
     --wm $wm --gm $gm --csf $csf\
     --skip $params.segment_tissues_skip\
-    --nb_threads $params.segment_tissues_nb_threads
+    --nb_threads $params.segment_tissues_nb_threads\
+    --nb_columns $params.segment_tissues_nb_columns
     """
 }
 
@@ -581,7 +591,8 @@ process QC_PFT_Maps {
     --seeding_mask $seeding_mask --map_include $map_include\
     --map_exclude $map_exclude\
     --skip $params.pft_maps_skip\
-    --nb_threads $params.pft_maps_nb_threads
+    --nb_threads $params.pft_maps_nb_threads\
+    --nb_columns $params.pft_maps_nb_columns
     """
 }
 
@@ -612,6 +623,7 @@ process QC_Register_T1 {
     --t1 $t1 --rgb $rgb\
     --wm $wm --gm $gm --csf $csf\
     --skip $params.register_skip\
-    --nb_threads $params.register_nb_threads
+    --nb_threads $params.register_nb_threads\
+    --nb_columns $params.register_nb_columns
     """
 }
