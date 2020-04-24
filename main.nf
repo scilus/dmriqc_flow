@@ -263,7 +263,8 @@ process QC_Eddy_Topup {
     --images *_eddy_topup.nii.gz\
     --skip $params.eddy_topup_skip\
     --nb_threads $params.eddy_topup_nb_threads\
-    --nb_columns $params.eddy_topup_nb_columns
+    --nb_columns $params.eddy_topup_nb_columns\
+    --duration $params.eddy_topup_duration
     """
 }
 
