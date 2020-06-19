@@ -10,18 +10,18 @@ nextflow run main.nf [OPTIONAL_ARGUMENTS] (--root)
 DESCRIPTION
 
     --root=/path/to/[root]              Root folder containing multiple subjects
+                                        TractoFlow input or TractoFlow results folder
 
-                                        [root]
-                                        ├── S1
-                                        │   ├── FODF_Metrics/
-                                        │   ├── Segment_Tissues/
-                                        │   ├── DTI_Metrics/
-                                        │   └── ...
-                                        └── S2
-                                            ├── FODF_Metrics/
-                                            ├── Segment_Tissues/
-                                            ├── DTI_Metrics/
-                                            └── ...
+    PROFILES (using -profile option (e.g. -profile use_cuda,fully_reproducible))
+
+    input_qc                            Create QC reports for your raw data
+
+    tractoflow_qc_light                 Create QC reports for your TractoFlow results
+                                        Output important steps only
+
+    tractoflow_qc_all                 Create QC reports for your TractoFlow results
+                                      Output all steps
+
 
 Files should be compressed Nifti files (.nii.gz)
 

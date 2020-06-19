@@ -20,9 +20,9 @@ log.info ""
 log.info "Start time: $workflow.start"
 log.info ""
 
-log.debug "[Command-line]"
-log.debug "$workflow.commandLine"
-log.debug ""
+log.info "[Profile]"
+log.info "$workflow.profile"
+log.info ""
 
 workflow.onComplete {
     log.info "Pipeline completed at: $workflow.complete"
@@ -30,8 +30,20 @@ workflow.onComplete {
     log.info "Execution duration: $workflow.duration"
 }
 
-log.info "Input: $params.root"
-root = file(params.root)
+if (workflow.profile != "input_qc" && workflow.profile != "tractoflow_qc_light" && workflow.profile != "tractoflow_qc_all")
+{
+    error "Error ~ Please select a profile (-profile): input_qc, tractoflow_qc_light or tractoflow_qc_all."
+}
+
+
+if (params.root){
+    log.info "Input: $params.root"
+    root = file(params.root)
+}
+else {
+    error "Error ~ Please use --root for the input data."
+}
+
 
 Channel
     .fromPath("$root/**/Segment_Tissues/*mask_wm.nii.gz", maxDepth:3)
@@ -87,6 +99,9 @@ process QC_Brain_Extraction_DWI {
     file "data"
     file "libs"
 
+    when:
+        params.run_qc_bet_dwi
+
     script:
     """
     dmriqc_brain_extraction.py "Brain Extraction DWI" report_dwi_bet.html\
@@ -122,6 +137,9 @@ process QC_Brain_Extraction_T1 {
     file "data"
     file "libs"
 
+    when:
+        params.run_qc_bet_t1
+
     script:
     """
     dmriqc_brain_extraction.py "Brain Extraction T1" report_t1_bet.html\
@@ -150,6 +168,9 @@ process QC_Denoise_DWI {
     file "data"
     file "libs"
 
+    when:
+        params.run_qc_denoise_dwi
+
     script:
     """
     dmriqc_generic.py "Denoise DWI" report_denoise_dwi.html\
@@ -176,6 +197,9 @@ process QC_Denoise_T1 {
     file "report_denoise_t1.html"
     file "data"
     file "libs"
+
+    when:
+        params.run_qc_denoise_t1
 
     script:
     """
@@ -239,7 +263,7 @@ process QC_Eddy_Topup {
     file "libs"
 
     when:
-    counter_b0_before == counter_b0_eddy_topup || counter_b0_before == counter_b0_eddy
+    (counter_b0_before == counter_b0_eddy_topup || counter_b0_before == counter_b0_eddy) && params.run_qc_eddy_topup
 
     script:
     """
@@ -288,6 +312,9 @@ process QC_Resample_DWI {
     file "data"
     file "libs"
 
+    when:
+        params.run_qc_resample_dwi
+
     script:
     """
     dmriqc_generic.py "Resample DWI" report_resampled_dwi.html\
@@ -314,6 +341,9 @@ process QC_Resample_T1 {
     file "report_resampled_t1.html"
     file "data"
     file "libs"
+
+    when:
+        params.run_qc_resample_t1
 
     script:
     """
@@ -384,6 +414,9 @@ process QC_DTI {
     file "data"
     file "libs"
 
+    when:
+        params.run_qc_dti
+
     script:
     """
     dmriqc_dti.py report_dti.html\
@@ -406,7 +439,7 @@ Channel
     .toSortedList()
     .set{compute_frf}
 
-process QC_Compute_FRF {
+process QC_FRF {
     cpus params.frf_nb_threads
 
     input:
@@ -416,6 +449,9 @@ process QC_Compute_FRF {
     file "report_compute_frf.html"
     file "data"
     file "libs"
+
+    when:
+        params.run_qc_frf
 
     script:
     """
@@ -470,6 +506,9 @@ process QC_FODF {
     file "data"
     file "libs"
 
+    when:
+        params.run_qc_fodf
+
     script:
     """
     dmriqc_fodf.py report_fodf.html\
@@ -508,6 +547,9 @@ process QC_Tracking {
     file "data"
     file "libs"
 
+    when:
+        params.run_qc_tracking
+
     script:
     """
     dmriqc_tractogram.py report_tracking.html --tractograms $tracking --t1 $t1
@@ -544,6 +586,9 @@ process QC_Segment_Tissues {
     file "report_segment_tissues.html"
     file "data"
     file "libs"
+
+    when:
+        params.run_qc_segment_tissues
 
     script:
     """
@@ -586,6 +631,9 @@ process QC_PFT_Maps {
     file "data"
     file "libs"
 
+    when:
+        params.run_qc_pft_maps
+
     script:
     """
     dmriqc_tracking_maps.py pft report_pft_maps.html\
@@ -618,6 +666,9 @@ process QC_Register_T1 {
     file "data"
     file "libs"
 
+    when:
+        params.run_qc_register_t1
+
     script:
     """
     dmriqc_registration.py report_registration.html\
@@ -626,5 +677,100 @@ process QC_Register_T1 {
     --skip $params.register_skip\
     --nb_threads $params.register_nb_threads\
     --nb_columns $params.register_nb_columns
+    """
+}
+
+Channel
+    .fromPath("$root/**/*bval", maxDepth:2)
+    .map{it}
+    .toSortedList()
+    .set{all_bval}
+
+Channel
+    .fromPath("$root/**/*bvec", maxDepth:2)
+    .map{it}
+    .toSortedList()
+    .set{all_bvec}
+
+process QC_DWI_Protocol {
+    cpus 1
+
+    input:
+    file(bval) from all_bval
+    file(bvec) from all_bvec
+
+    output:
+    file "report_dwi_protocol.html"
+    file "data"
+    file "libs"
+
+    when:
+        params.run_qc_dwi_protocol
+
+    script:
+    """
+    dmriqc_dwi_protocol.py report_dwi_protocol.html\
+    --bval $bval --bvec $bvec\
+    --tol $params.dwi_protocol_tol
+    """
+}
+
+Channel
+    .fromPath("$root/**/*t1.nii.gz", maxDepth:2)
+    .map{it}
+    .toSortedList()
+    .set{all_t1}
+
+process QC_Raw_T1 {
+    cpus params.raw_t1_nb_threads
+
+    input:
+    file(t1) from all_t1
+
+    output:
+    file "report_raw_t1.html"
+    file "data"
+    file "libs"
+
+    when:
+        params.run_raw_t1
+
+    script:
+    """
+    dmriqc_generic.py "Raw_T1" report_raw_t1.html\
+        --images $t1\
+        --skip $params.raw_t1_skip\
+        --nb_threads $params.raw_t1_nb_threads\
+        --nb_columns $params.raw_t1_nb_columns
+    """
+}
+
+Channel
+    .fromPath("$root/**/*dwi.nii.gz", maxDepth:2)
+    .map{it}
+    .toSortedList()
+    .set{all_dwi}
+
+process QC_Raw_DWI {
+    cpus params.raw_dwi_nb_threads
+
+    input:
+    file(dwi) from all_dwi
+
+    output:
+    file "report_raw_dwi.html"
+    file "data"
+    file "libs"
+
+    when:
+        params.run_raw_dwi
+
+    script:
+    """
+    dmriqc_generic.py "Raw_DWI" report_raw_dwi.html\
+        --images $dwi\
+        --skip $params.raw_dwi_skip\
+        --nb_threads $params.raw_dwi_nb_threads\
+        --nb_columns $params.raw_dwi_nb_columns
     """
 }
