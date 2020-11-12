@@ -5,22 +5,30 @@ Run human pipeline
 
 USAGE
 
-nextflow run main.nf [OPTIONAL_ARGUMENTS] (--root)
+nextflow run main.nf [OPTIONAL_ARGUMENTS] (--input)
 
 DESCRIPTION
 
-    --root=/path/to/[root]              Root folder containing multiple subjects
-                                        TractoFlow input or TractoFlow results folder
+    --input=/path/to/[root]             Root folder containing multiple subjects
+
 
     PROFILES (using -profile option (e.g. -profile use_cuda,fully_reproducible))
 
     input_qc                            Create QC reports for your raw data
+                                        --input structure: TractoFlow input folder
 
     tractoflow_qc_light                 Create QC reports for your TractoFlow results
                                         Output important steps only
+                                        --input structure: TractoFlow results folder
 
-    tractoflow_qc_all                 Create QC reports for your TractoFlow results
-                                      Output all steps
+    tractoflow_qc_all                   Create QC reports for your TractoFlow results
+                                        Output all steps
+                                        --input structure: TractoFlow results folder
+
+    rbx_qc                              Create QC reports for your rbx-flow results
+                                        --input structure: for each subject, a folder with all the trk inside
+                                        and an anatomy named anat.nii.gz or if bundles come from rbx_flow you
+                                        can use tree_for_rbx_qc.sh in combine_flows repository.
 
 
 Files should be compressed Nifti files (.nii.gz)

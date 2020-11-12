@@ -1,6 +1,6 @@
 #!/usr/bin/env nextflow
 
-params.root = false
+params.input = false
 params.fa_template = false
 params.help = false
 
@@ -30,18 +30,18 @@ workflow.onComplete {
     log.info "Execution duration: $workflow.duration"
 }
 
-if (workflow.profile != "input_qc" && workflow.profile != "tractoflow_qc_light" && workflow.profile != "tractoflow_qc_all")
+if (workflow.profile != "input_qc" && workflow.profile != "tractoflow_qc_light" && workflow.profile != "tractoflow_qc_all" && workflow.profile != "rbx_qc")
 {
     error "Error ~ Please select a profile (-profile): input_qc, tractoflow_qc_light or tractoflow_qc_all."
 }
 
 
-if (params.root){
-    log.info "Input: $params.root"
-    root = file(params.root)
+if (params.input){
+    log.info "Input: $params.input"
+    root = file(params.input)
 }
 else {
-    error "Error ~ Please use --root for the input data."
+    error "Error ~ Please use --input for the input data."
 }
 
 
@@ -772,5 +772,75 @@ process QC_Raw_DWI {
         --skip $params.raw_dwi_skip\
         --nb_threads $params.raw_dwi_nb_threads\
         --nb_columns $params.raw_dwi_nb_columns
+    """
+}
+
+anat_rbx = Channel
+    .fromFilePairs("$params.input/**/*anat.nii.gz",
+              maxDepth: 1,
+              size: 1,
+              flat: true) { it.parent.name }
+
+bundles_rbx = Channel
+    .fromFilePairs("$params.input/**/*.trk",
+                   maxDepth: 1,
+                   size: -1) { it.parent.name }
+
+bundles_rbx
+    .flatMap{ sid, bundles -> bundles.collect{ [sid, it] } }
+    .map{sid, bundle -> [sid, bundle.getName().replace(sid, "").replace(".trk", "").replace("__", "").replace("_L", "").replace("_R", ""), bundle]}
+    .groupTuple(by: [0,1])
+    .combine(anat_rbx, by:0)
+    .set{bundles_anat_for_screenshots}
+
+process Screenshots_RBx {
+    cpus 1
+    publishDir {"./results_QC/$task.process/${sid}"}
+
+    input:
+    set sid, b_name, file(bundles), file(anat) from bundles_anat_for_screenshots
+
+    output:
+    set b_name, val("QC"), "${sid}__${b_name}.png" into screenshots_for_report
+
+    when:
+        params.run_qc_rbx
+
+    script:
+    """
+    visualize_bundles_mosaic.py $anat $bundles ${sid}__${b_name}.png -f --light_screenshot --no_first_column --zoom 2
+    """
+}
+
+screenshots_for_report
+    .groupTuple(by: 1, sort:true)
+    .map{b_names, _, bundles -> [b_names.join(",").replaceAll(",", " "), bundles]}
+    .set{screenshots_for_qc_rbx}
+
+process QC_RBx {
+    cpus 1
+
+    input:
+    set b_names, file(bundles) from screenshots_for_qc_rbx
+
+    output:
+    file "report_rbx.html"
+    file "data"
+    file "libs"
+
+    when:
+        params.run_qc_rbx
+
+    script:
+    """
+    echo ${b_names}
+    for i in $b_names;
+    do
+        echo \${i}
+        mkdir \${i}
+        ls
+        mv *\${i}.png \${i}
+    done
+    dmriqc_from_screenshot.py report_rbx.html ${b_names} --sym_link
     """
 }
