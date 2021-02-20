@@ -16,7 +16,7 @@ DESCRIPTION
 
     PROFILES (using -profile option (e.g. -profile use_cuda,fully_reproducible))
 
-    input_qc                            Create QC reports for your raw data
+    input_qc                            Create QC reports for your raw data (Can be a BIDS structure)
 
     tractoflow_qc_light                 Create QC reports for your TractoFlow results
                                         Output important steps only

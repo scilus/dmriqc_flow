@@ -681,16 +681,39 @@ process QC_Register_T1 {
 }
 
 Channel
-    .fromPath("$root/**/*bval", maxDepth:2)
+    .fromPath("$root/**/*bval", maxDepth:1)
     .map{it}
     .toSortedList()
-    .set{all_bval}
+    .set{all_raw_bval}
 
 Channel
-    .fromPath("$root/**/*bvec", maxDepth:2)
+    .fromPath("$root/sub-*/**/*dwi.bval", maxDepth:4)
     .map{it}
     .toSortedList()
-    .set{all_bvec}
+    .set{all_bids_bval}
+
+all_raw_bval
+  .merge(all_bids_bval)
+  .sort()
+  .set{all_bval}
+
+Channel
+    .fromPath("$root/**/*bvec", maxDepth:1)
+    .map{it}
+    .toSortedList()
+    .set{all_raw_bvec}
+
+Channel
+    .fromPath("$root/sub-*/**/*dwi.bvec", maxDepth:4)
+    .map{it}
+    .toSortedList()
+    .set{all_bids_bvec}
+
+all_raw_bvec
+  .merge(all_bids_bvec)
+  .sort()
+  .set{all_bvec}
+
 
 process QC_DWI_Protocol {
     cpus 1
@@ -716,10 +739,21 @@ process QC_DWI_Protocol {
 }
 
 Channel
-    .fromPath("$root/**/*t1.nii.gz", maxDepth:2)
+    .fromPath("$root/**/*t1.nii.gz", maxDepth:1)
     .map{it}
     .toSortedList()
-    .set{all_t1}
+    .set{all_raw_t1}
+
+Channel
+    .fromPath("$root/sub-*/**/*T1w.nii.gz", maxDepth:4)
+    .map{it}
+    .toSortedList()
+    .set{all_bids_t1}
+
+all_raw_t1
+  .merge(all_bids_t1)
+  .sort()
+  .set{all_t1}
 
 process QC_Raw_T1 {
     cpus params.raw_t1_nb_threads
@@ -746,10 +780,21 @@ process QC_Raw_T1 {
 }
 
 Channel
-    .fromPath("$root/**/*dwi.nii.gz", maxDepth:2)
+    .fromPath("$root/**/*dwi.nii.gz", maxDepth:1)
     .map{it}
     .toSortedList()
-    .set{all_dwi}
+    .set{all_raw_dwi}
+
+Channel
+    .fromPath("$root/sub-*/**/*dwi.nii.gz", maxDepth:4)
+    .map{it}
+    .toSortedList()
+    .set{all_bids_dwi}
+
+all_raw_dwi
+  .merge(all_bids_dwi)
+  .sort()
+  .set{all_dwi}
 
 process QC_Raw_DWI {
     cpus params.raw_dwi_nb_threads
