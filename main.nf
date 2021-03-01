@@ -524,16 +524,30 @@ process QC_FODF {
 }
 
 Channel
-    .fromPath("$root/**/Tracking/*tracking.trk", maxDepth:3)
+    .fromPath("$root/**/PFT_Tracking/*.trk", maxDepth:3)
     .map{it}
     .toSortedList()
-    .set{tractograms}
+    .into{pft_tractograms_count;pft_tractograms}
+
+Channel
+    .fromPath("$root/**/Local_Tracking/*.trk", maxDepth:3)
+    .map{it}
+    .toSortedList()
+    .into{local_tractograms_count;local_tractograms}
 
 Channel
     .fromPath("$root/**/Register_T1/*t1_warped.nii.gz", maxDepth:3)
     .map{it}
     .toSortedList()
     .into{t1_warped_for_tracking;t1_warped_for_registration}
+
+pft_tractograms.concat(local_tractograms).flatten().toList().set{tractograms}
+
+add_t1s = false
+if (pft_tractograms_count.flatten().count().value && local_tractograms_count.flatten().count().value)
+{
+    add_t1s = true
+}
 
 process QC_Tracking {
     cpus params.tracking_nb_threads
@@ -551,8 +565,9 @@ process QC_Tracking {
         params.run_qc_tracking
 
     script:
+    t1s = add_t1s ? t1 + ' ' + t1 : t1
     """
-    dmriqc_tractogram.py report_tracking.html --tractograms $tracking --t1 $t1
+    dmriqc_tractogram.py report_tracking.html --tractograms $tracking --t1 $t1s
     """
 }
 
