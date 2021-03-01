@@ -667,6 +667,67 @@ process QC_PFT_Maps {
 }
 
 Channel
+    .fromPath("$input/**/Local_Tracking_Mask/*tracking_mask.nii.gz", maxDepth:3)
+    .map{it}
+    .toSortedList()
+    .set{mask}
+
+process QC_Local_Tracking_Mask {
+    cpus params.local_tracking_mask_nb_threads
+
+    input:
+    file(tracking_mask) from mask
+
+    output:
+    file "report_local_tracking_mask.html"
+    file "data"
+    file "libs"
+
+    when:
+        params.run_qc_tracking_mask
+
+    script:
+    """
+    dmriqc_generic.py "Tracking mask" report_local_tracking_mask.html\
+        --images $tracking_mask\
+        --skip $params.local_tracking_mask_skip\
+        --nb_threads $params.local_tracking_mask_nb_threads\
+        --nb_columns $params.local_tracking_mask_nb_columns
+    """
+}
+
+Channel
+    .fromPath("$input/**/Local_Seeding_Mask/*seeding_mask.nii.gz", maxDepth:3)
+    .map{it}
+    .toSortedList()
+    .set{seeding}
+
+process QC_Local_Seeding_Mask {
+    cpus params.local_seeding_mask_nb_threads
+
+    input:
+    file(seeding_mask) from seeding
+
+    output:
+    file "report_local_seeding_mask.html"
+    file "data"
+    file "libs"
+
+    when:
+        params.run_qc_seeding_mask
+
+    script:
+    """
+    dmriqc_generic.py "Seeding mask" report_local_seeding_mask.html\
+            --images seeding_mask\
+            --skip $params.local_seeding_mask_skip\
+            --nb_threads $params.local_seeding_mask_nb_threads\
+            --nb_columns $params.local_seeding_mask_nb_columns
+    """
+}
+
+
+Channel
     .fromPath("$input/**/DTI_Metrics/*rgb.nii.gz", maxDepth:3)
     .map{it}
     .toSortedList()
