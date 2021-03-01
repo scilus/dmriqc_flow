@@ -719,7 +719,7 @@ process QC_Local_Seeding_Mask {
     script:
     """
     dmriqc_generic.py "Seeding mask" report_local_seeding_mask.html\
-            --images seeding_mask\
+            --images $seeding_mask\
             --skip $params.local_seeding_mask_skip\
             --nb_threads $params.local_seeding_mask_nb_threads\
             --nb_columns $params.local_seeding_mask_nb_columns
