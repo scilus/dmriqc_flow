@@ -544,7 +544,7 @@ Channel
 pft_tractograms.concat(local_tractograms).flatten().toList().set{tractograms}
 
 add_t1s = false
-if (pft_tractograms_count.flatten().count().value > 0 && local_tractograms_count.flatten().count().value > 0)
+if (pft_tractograms_count.flatten().count().val > 0 && local_tractograms_count.flatten().count().val > 0)
 {
     add_t1s = true
 }
@@ -622,19 +622,19 @@ process QC_Segment_Tissues {
 }
 
 Channel
-    .fromPath("$input/**/Seeding_Mask/*seeding_mask.nii.gz", maxDepth:3)
+    .fromPath("$input/**/PFT_Seeding_Mask/*seeding_mask.nii.gz", maxDepth:3)
     .map{it}
     .toSortedList()
     .set{seeding}
 
 Channel
-    .fromPath("$input/**/PFT_Maps/*map_include.nii.gz", maxDepth:3)
+    .fromPath("$input/**/PFT_Tracking_Maps/*map_include.nii.gz", maxDepth:3)
     .map{it}
     .toSortedList()
     .set{include}
 
 Channel
-    .fromPath("$input/**/PFT_Maps/*map_exclude.nii.gz", maxDepth:3)
+    .fromPath("$input/**/PFT_Tracking_Maps/*map_exclude.nii.gz", maxDepth:3)
     .map{it}
     .toSortedList()
     .set{exclude}
