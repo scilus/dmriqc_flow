@@ -565,10 +565,16 @@ process QC_Tracking {
         params.run_qc_tracking
 
     script:
-    t1s = add_t1s ? t1 + ' ' + t1 : t1
-    """
-    dmriqc_tractogram.py report_tracking.html --tractograms $tracking --t1 $t1s
-    """
+    if (add_t1s){
+        """
+        dmriqc_tractogram.py report_tracking.html --tractograms $tracking --t1 $t1 $t1
+        """
+    }
+    else{
+        """
+        dmriqc_tractogram.py report_tracking.html --tractograms $tracking --t1 $t1
+        """
+    }
 }
 
 Channel
