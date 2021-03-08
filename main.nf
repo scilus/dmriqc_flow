@@ -524,7 +524,7 @@ process QC_FODF {
 }
 
 Channel
-    .fromPath("$root/**/Tracking/*tracking.trk", maxDepth:3)
+    .fromPath("$root/**/PFT_Tracking/*tracking*.trk", maxDepth:3)
     .map{it}
     .toSortedList()
     .set{tractograms}
@@ -601,19 +601,19 @@ process QC_Segment_Tissues {
 }
 
 Channel
-    .fromPath("$root/**/Seeding_Mask/*seeding_mask.nii.gz", maxDepth:3)
+    .fromPath("$root/**/PFT_Seeding_Mask/*seeding_mask.nii.gz", maxDepth:3)
     .map{it}
     .toSortedList()
     .set{seeding}
 
 Channel
-    .fromPath("$root/**/PFT_Maps/*map_include.nii.gz", maxDepth:3)
+    .fromPath("$root/**/PFT_Tracking_Maps/*map_include.nii.gz", maxDepth:3)
     .map{it}
     .toSortedList()
     .set{include}
 
 Channel
-    .fromPath("$root/**/PFT_Maps/*map_exclude.nii.gz", maxDepth:3)
+    .fromPath("$root/**/PFT_Tracking_Maps/*map_exclude.nii.gz", maxDepth:3)
     .map{it}
     .toSortedList()
     .set{exclude}
