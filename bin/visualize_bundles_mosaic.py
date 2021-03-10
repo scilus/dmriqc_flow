@@ -169,10 +169,10 @@ def main():
                         'coronal_posterior',
                         'sagittal_left']
 
-    # for filename in args.in_bundles:
-        # if not is_header_compatible(args.in_volume, filename):
-        #     parser.error('{} does not have a compatible header with {}'.format(
-        #         filename, args.in_volume))
+    for filename in args.in_bundles:
+        if not is_header_compatible(args.in_volume, filename):
+            parser.error('{} does not have a compatible header with {}'.format(
+                filename, args.in_volume))
 
     output_dir = os.path.dirname(args.out_image)
     if output_dir:

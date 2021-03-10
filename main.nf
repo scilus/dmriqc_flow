@@ -890,7 +890,8 @@ process Screenshots_RBx {
 
     script:
     """
-    visualize_bundles_mosaic.py $anat $bundles ${sid}__${b_name}.png -f --light_screenshot --no_first_column --zoom 2
+    mrconvert $anat anat.nii.gz
+    visualize_bundles_mosaic.py anat.nii.gz $bundles ${sid}__${b_name}.png -f --light_screenshot --no_first_column --zoom 2
     """
 }
 
