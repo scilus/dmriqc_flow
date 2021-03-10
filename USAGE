@@ -9,8 +9,10 @@ nextflow run main.nf [OPTIONAL_ARGUMENTS] (--input)
 
 DESCRIPTION
 
-    --input=/path/to/[root]             Root folder containing multiple subjects
-
+    --input=/path/to/[root]             Input folder containing multiple subjects
+                                        TractoFlow input or TractoFlow results folder
+                                        All the files must contain subject id prefix
+                                        (e.g. subj1__t1.nii.gz, subj1__bval, subj1_bvec)
 
     PROFILES (using -profile option (e.g. -profile use_cuda,fully_reproducible))
 
