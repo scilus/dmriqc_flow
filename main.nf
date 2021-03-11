@@ -936,7 +936,7 @@ bundles_rbx
     .set{bundles_anat_for_screenshots}
 
 process Screenshots_RBx {
-    cpus 1
+    cpus 2
     stageInMode 'copy'
     publishDir {"./results_QC/$task.process/${sid}"}
 
