@@ -111,31 +111,31 @@ def draw_column_with_names(draw, output_names, text_pos_x,
     (views and bundle information to display).
     """
     # Orientation's names
-    # for num, name in enumerate(output_names):
-    #     i = height * num + 50
-    #     j = 0
-    #     # Name splited in two lines
-    #     draw.text((i + text_pos_x, j + text_pos_y),
-    #               name[:name.find('_')], font=font)
-    #     draw.text((i + text_pos_x, j + text_pos_y + font.getsize(' ')[1]*1.5),
-    #               name[1+name.find('_'):], font=font)
-    #
-    # # First column, last row: description of the information to show
-    # i = height * view_number
-    # j = 0
-    # draw.text((i + text_pos_x, j + text_pos_y),
-    #           ('Bundle'), font=font)
-    # draw.text((i + text_pos_x, j + text_pos_y + font.getsize(' ')[1]*1.5),
-    #           ('Elements'), font=font)
+    for num, name in enumerate(output_names):
+        i = height * num + 50
+        j = 0
+        # Name splited in two lines
+        draw.text((i + text_pos_x, j + text_pos_y),
+                  name[:name.find('_')], font=font)
+        draw.text((i + text_pos_x, j + text_pos_y + font.getsize(' ')[1]*1.5),
+                  name[1+name.find('_'):], font=font)
+
+    # First column, last row: description of the information to show
+    i = height * view_number
+    j = 0
+    draw.text((i + text_pos_x, j + text_pos_y),
+              ('Bundle'), font=font)
+    draw.text((i + text_pos_x, j + text_pos_y + font.getsize(' ')[1]*1.5),
+              ('Elements'), font=font)
 
 
 def draw_bundle_information(draw, bundle_file_name, nbr_of_elem,
                             pos_x, pos_y, font):
     """ Draw text with bundle information. """
-    # draw.text((pos_y, pos_x),
-    #           (bundle_file_name), font=font)
-    # draw.text((pos_y, pos_x + font.getsize(' ')[1]*1.5),
-    #           ('{}'.format(nbr_of_elem)), font=font)
+    draw.text((pos_y, pos_x),
+              (bundle_file_name), font=font)
+    draw.text((pos_y, pos_x + font.getsize(' ')[1]*1.5),
+              ('{}'.format(nbr_of_elem)), font=font)
 
 
 def set_img_in_cell(mosaic, ren, view_number, path, width, height, i):
