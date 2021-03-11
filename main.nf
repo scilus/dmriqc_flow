@@ -104,6 +104,9 @@ process QC_Brain_Extraction_DWI {
 
     script:
     """
+    export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
+    export OMP_NUM_THREADS=1
+    export OPENBLAS_NUM_THREADS=1
     dmriqc_brain_extraction.py "Brain Extraction DWI" report_dwi_bet.html\
     --images_no_bet $dwi\
     --images_bet_mask $mask\
@@ -142,6 +145,9 @@ process QC_Brain_Extraction_T1 {
 
     script:
     """
+    export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
+    export OMP_NUM_THREADS=1
+    export OPENBLAS_NUM_THREADS=1
     dmriqc_brain_extraction.py "Brain Extraction T1" report_t1_bet.html\
     --images_no_bet $t1\
     --images_bet_mask $mask\
@@ -173,6 +179,9 @@ process QC_Denoise_DWI {
 
     script:
     """
+    export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
+    export OMP_NUM_THREADS=1
+    export OPENBLAS_NUM_THREADS=1
     dmriqc_generic.py "Denoise DWI" report_denoise_dwi.html\
     --images $dwi\
     --skip $params.denoise_dwi_skip\
@@ -203,6 +212,9 @@ process QC_Denoise_T1 {
 
     script:
     """
+    export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
+    export OMP_NUM_THREADS=1
+    export OPENBLAS_NUM_THREADS=1
     dmriqc_generic.py "Denoise T1" report_denoise_t1.html\
     --images $t1\
     --skip $params.denoise_t1_skip\
@@ -267,6 +279,9 @@ process QC_Eddy_Topup {
 
     script:
     """
+    export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
+    export OMP_NUM_THREADS=1
+    export OPENBLAS_NUM_THREADS=1
     for i in $b0
     do
         echo \$i >> b0.txt
@@ -317,6 +332,9 @@ process QC_Resample_DWI {
 
     script:
     """
+    export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
+    export OMP_NUM_THREADS=1
+    export OPENBLAS_NUM_THREADS=1
     dmriqc_generic.py "Resample DWI" report_resampled_dwi.html\
     --images $b0 --wm $wm --gm $gm --csf $csf\
     --skip $params.resample_dwi_skip\
@@ -347,6 +365,9 @@ process QC_Resample_T1 {
 
     script:
     """
+    export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
+    export OMP_NUM_THREADS=1
+    export OPENBLAS_NUM_THREADS=1
     dmriqc_generic.py "Resample T1" report_resampled_t1.html\
     --images $t1\
     --skip $params.resample_t1_skip\
@@ -419,6 +440,9 @@ process QC_DTI {
 
     script:
     """
+    export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
+    export OMP_NUM_THREADS=1
+    export OPENBLAS_NUM_THREADS=1
     dmriqc_dti.py report_dti.html\
     --fa $fa\
     --md $md\
@@ -455,6 +479,9 @@ process QC_FRF {
 
     script:
     """
+    export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
+    export OMP_NUM_THREADS=1
+    export OPENBLAS_NUM_THREADS=1
     dmriqc_frf.py $frf report_compute_frf.html
     """
 }
@@ -511,6 +538,9 @@ process QC_FODF {
 
     script:
     """
+    export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
+    export OMP_NUM_THREADS=1
+    export OPENBLAS_NUM_THREADS=1
     dmriqc_fodf.py report_fodf.html\
     --afd_max $afd_max\
     --afd_sum $afd_sum\
@@ -567,11 +597,17 @@ process QC_Tracking {
     script:
     if (add_t1s){
         """
+        export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
+        export OMP_NUM_THREADS=1
+        export OPENBLAS_NUM_THREADS=1
         dmriqc_tractogram.py report_tracking.html --tractograms $tracking --t1 $t1 $t1
         """
     }
     else{
         """
+        export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
+        export OMP_NUM_THREADS=1
+        export OPENBLAS_NUM_THREADS=1
         dmriqc_tractogram.py report_tracking.html --tractograms $tracking --t1 $t1
         """
     }
@@ -613,6 +649,9 @@ process QC_Segment_Tissues {
 
     script:
     """
+    export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
+    export OMP_NUM_THREADS=1
+    export OPENBLAS_NUM_THREADS=1
     dmriqc_tissues.py report_segment_tissues.html\
     --wm $wm --gm $gm --csf $csf\
     --skip $params.segment_tissues_skip\
@@ -657,6 +696,9 @@ process QC_PFT_Maps {
 
     script:
     """
+    export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
+    export OMP_NUM_THREADS=1
+    export OPENBLAS_NUM_THREADS=1
     dmriqc_tracking_maps.py pft report_pft_maps.html\
     --seeding_mask $seeding_mask --map_include $map_include\
     --map_exclude $map_exclude\
@@ -688,6 +730,9 @@ process QC_Local_Tracking_Mask {
 
     script:
     """
+    export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
+    export OMP_NUM_THREADS=1
+    export OPENBLAS_NUM_THREADS=1
     dmriqc_generic.py "Tracking mask" report_local_tracking_mask.html\
         --images $tracking_mask\
         --skip $params.local_tracking_mask_skip\
@@ -718,6 +763,9 @@ process QC_Local_Seeding_Mask {
 
     script:
     """
+    export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
+    export OMP_NUM_THREADS=1
+    export OPENBLAS_NUM_THREADS=1
     dmriqc_generic.py "Seeding mask" report_local_seeding_mask.html\
             --images $seeding_mask\
             --skip $params.local_seeding_mask_skip\
@@ -753,6 +801,9 @@ process QC_Register_T1 {
 
     script:
     """
+    export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
+    export OMP_NUM_THREADS=1
+    export OPENBLAS_NUM_THREADS=1
     dmriqc_registration.py report_registration.html\
     --t1 $t1 --rgb $rgb\
     --wm $wm --gm $gm --csf $csf\
@@ -791,6 +842,9 @@ process QC_DWI_Protocol {
 
     script:
     """
+    export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
+    export OMP_NUM_THREADS=1
+    export OPENBLAS_NUM_THREADS=1
     dmriqc_dwi_protocol.py report_dwi_protocol.html\
     --bval $bval --bvec $bvec\
     --tol $params.dwi_protocol_tol
@@ -819,6 +873,9 @@ process QC_Raw_T1 {
 
     script:
     """
+    export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
+    export OMP_NUM_THREADS=1
+    export OPENBLAS_NUM_THREADS=1
     dmriqc_generic.py "Raw_T1" report_raw_t1.html\
         --images $t1\
         --skip $params.raw_t1_skip\
@@ -849,6 +906,9 @@ process QC_Raw_DWI {
 
     script:
     """
+    export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
+    export OMP_NUM_THREADS=1
+    export OPENBLAS_NUM_THREADS=1
     dmriqc_generic.py "Raw_DWI" report_raw_dwi.html\
         --images $dwi\
         --skip $params.raw_dwi_skip\
@@ -890,6 +950,9 @@ process Screenshots_RBx {
 
     script:
     """
+    export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
+    export OMP_NUM_THREADS=1
+    export OPENBLAS_NUM_THREADS=1
     mrconvert $anat anat.nii.gz
     visualize_bundles_mosaic.py anat.nii.gz $bundles ${sid}__${b_name}.png -f --light_screenshot --no_first_column --zoom 2
     """
@@ -916,6 +979,9 @@ process QC_RBx {
 
     script:
     """
+    export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
+    export OMP_NUM_THREADS=1
+    export OPENBLAS_NUM_THREADS=1
     for i in $b_names;
     do
         echo \${i}
