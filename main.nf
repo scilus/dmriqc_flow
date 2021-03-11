@@ -916,12 +916,10 @@ process QC_RBx {
 
     script:
     """
-    echo ${b_names}
     for i in $b_names;
     do
         echo \${i}
-        mkdir \${i}
-        ls
+        mkdir -p \${i}
         mv *\${i}.png \${i}
     done
     dmriqc_from_screenshot.py report_rbx.html ${b_names} --sym_link
