@@ -963,7 +963,9 @@ process Screenshots_RBx {
 screenshots_for_report
     .groupTuple(by: 1, sort:true)
     .map{b_names, _, bundles -> [b_names.join(",").replaceAll(",", " "), bundles]}
+    .view()
     .map{ it.unique() }
+    .view()
     .set{screenshots_for_qc_rbx}
 
 process QC_RBx {
@@ -985,7 +987,6 @@ process QC_RBx {
     export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
     export OMP_NUM_THREADS=1
     export OPENBLAS_NUM_THREADS=1
-    ls
     for i in $b_names;
     do
         echo \${i}
