@@ -27,7 +27,6 @@ from scilpy.io.utils import (add_overwrite_arg,
                              assert_outputs_exist,
                              assert_output_dirs_exist_and_empty)
 from scilpy.utils.filenames import split_name_with_nii
-from dmriqcpy.viz.utils import renderer_to_arr
 
 
 def _build_arg_parser():
@@ -140,10 +139,10 @@ def draw_bundle_information(draw, bundle_file_name, nbr_of_elem,
 
 def set_img_in_cell(mosaic, ren, view_number, path, width, height, i):
     """ Set a snapshot of the bundle in a cell of mosaic """
-    image = renderer_to_arr(ren, (width, height))
+    window.snapshot(ren, path, size=(width, height))
     j = i
     i = height * view_number
-    image = Image.fromarray(image)
+    image = Image.open(path)
     image.thumbnail((width, height))
     mosaic.paste(image, (i, j))
 
