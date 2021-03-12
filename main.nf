@@ -963,8 +963,9 @@ process Screenshots_RBx {
 screenshots_for_report
     .groupTuple(by: 1, sort:true)
     .view()
-    .map{b_names, _, bundles -> [b_names, bundles].toList()}
+    .map{b_names, _, bundles -> [b_names, bundles]}
     .map{ it.unique() }
+    .view()
     .set{screenshots_for_qc_rbx}
 
 process QC_RBx {
