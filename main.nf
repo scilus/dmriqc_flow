@@ -37,8 +37,6 @@ for (String item : theArr) {
    profiles.add(item);
 }
 
-log.info "$profiles"
-
 if (profiles.get(0) != "input_qc" && profiles.get(0) != "tractoflow_qc_light" && profiles.get(0) != "tractoflow_qc_all")
 {
     error "Error ~ Please select a profile (-profile): input_qc, tractoflow_qc_light or tractoflow_qc_all."
