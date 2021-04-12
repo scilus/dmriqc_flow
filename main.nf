@@ -14,7 +14,7 @@ if(params.help) {
     return
 }
 
-log.info "dMRIqc-Flow"
+log.info "dMRIqc_flow"
 log.info "==========="
 log.info ""
 log.info "Start time: $workflow.start"
@@ -30,7 +30,16 @@ workflow.onComplete {
     log.info "Execution duration: $workflow.duration"
 }
 
-if (workflow.profile != "input_qc" && workflow.profile != "tractoflow_qc_light" && workflow.profile != "tractoflow_qc_all")
+
+String[] theArr = workflow.profile.split(",");
+List<String> profiles = new ArrayList<String>();
+for (String item : theArr) {
+   profiles.add(item);
+}
+
+log.info "$profiles"
+
+if (profiles.get(0) != "input_qc" && profiles.get(0) != "tractoflow_qc_light" && profiles.get(0) != "tractoflow_qc_all")
 {
     error "Error ~ Please select a profile (-profile): input_qc, tractoflow_qc_light or tractoflow_qc_all."
 }
