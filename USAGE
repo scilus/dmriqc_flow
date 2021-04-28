@@ -15,7 +15,7 @@ DESCRIPTION
                                         (e.g. subj1__t1.nii.gz, subj1__bval, subj1_bvec)
 
     --output_dir                        Directory where to write the final results.
-                                        By default, will be in "./results"
+                                        By default, will be in "./results_QC"
 
     PROFILES (using -profile option (e.g. -profile tractoflow_qc_light,cbrain))
 
