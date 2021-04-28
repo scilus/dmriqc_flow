@@ -14,15 +14,22 @@ DESCRIPTION
                                         All the files must contain subject id prefix
                                         (e.g. subj1__t1.nii.gz, subj1__bval, subj1_bvec)
 
-    PROFILES (using -profile option (e.g. -profile use_cuda,fully_reproducible))
+    --output_dir                        Directory where to write the final results.
+                                        By default, will be in "./results_QC"
+
+    PROFILES (using -profile option (e.g. -profile tractoflow_qc_light,cbrain))
 
     input_qc                            Create QC reports for your raw data
 
-    tractoflow_qc_light                 Create QC reports for your TractoFlow results
-                                        Output important steps only
+    tractoflow_qc_light                 Create QC reports for your TractoFlow results:
+                                        Output important steps only.
 
-    tractoflow_qc_all                   Create QC reports for your TractoFlow results
-                                        Output all steps
+    tractoflow_qc_all                   Create QC reports for your TractoFlow results:
+                                        Output all steps.
+
+
+    cbrain                              When this profile is used, Nextflow will copy all the output files in publishDir and not use symlinks.
+                                        cbrain profile should be used as a second profile (e.g -profile input_qc,cbrain)
 
 
 Files should be compressed Nifti files (.nii.gz)
