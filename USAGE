@@ -5,13 +5,14 @@ Run human pipeline
 
 USAGE
 
-nextflow run main.nf [OPTIONAL_ARGUMENTS] (--root)
+nextflow run main.nf [OPTIONAL_ARGUMENTS] (--input)
 
 DESCRIPTION
 
-    --root=/path/to/[root]              Root folder containing multiple subjects
-                                        TractoFlow input or TractoFlow results folder
-                                        All the files must contain subject id prefix
+    --input=/path/to/[root]             Input folder containing multiple subjects
+                                        TractoFlow input (bids structure or not)
+                                        or TractoFlow results folder
+                                        All the files must contain subject id prefix or follow BIDS structure.
                                         (e.g. subj1__t1.nii.gz, subj1__bval, subj1_bvec)
 
     PROFILES (using -profile option (e.g. -profile use_cuda,fully_reproducible))
