@@ -10,8 +10,9 @@ nextflow run main.nf [OPTIONAL_ARGUMENTS] (--input)
 DESCRIPTION
 
     --input=/path/to/[root]             Input folder containing multiple subjects
-                                        TractoFlow input or TractoFlow results folder
-                                        All the files must contain subject id prefix
+                                        TractoFlow input (bids structure or not)
+                                        or TractoFlow results folder
+                                        All the files must contain subject id prefix or follow BIDS structure.
                                         (e.g. subj1__t1.nii.gz, subj1__bval, subj1_bvec)
 
     --output_dir                        Directory where to write the final results.
@@ -19,7 +20,7 @@ DESCRIPTION
 
     PROFILES (using -profile option (e.g. -profile tractoflow_qc_light,cbrain))
 
-    input_qc                            Create QC reports for your raw data
+    input_qc                            Create QC reports for your raw data (Can be a BIDS structure)
 
     tractoflow_qc_light                 Create QC reports for your TractoFlow results:
                                         Output important steps only.
