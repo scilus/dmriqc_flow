@@ -454,7 +454,6 @@ process QC_FRF {
 
     output:
     file "report_compute_frf.html"
-    file "data"
     file "libs"
 
     when:
