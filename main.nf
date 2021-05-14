@@ -870,13 +870,13 @@ process QC_Raw_T1 {
 Channel
     .fromPath("$input/**/*dwi.nii.gz", maxDepth:1)
     .map{it}
-    .toedList()
+    .toSortedList()
     .set{all_raw_dwi}
 
 Channel
     .fromPath("$input/sub-*/**/*dwi.nii.gz", maxDepth:4)
     .map{it}
-    .toedList()
+    .toSortedList()
     .set{all_bids_dwi}
 
 all_raw_dwi
