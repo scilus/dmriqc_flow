@@ -840,7 +840,7 @@ Channel
 
 all_raw_t1
   .merge(all_bids_t1)
-  .toedList()
+  .toSortedList()
   .set{all_t1}
 
 process QC_Raw_T1 {
