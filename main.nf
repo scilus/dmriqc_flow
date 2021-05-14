@@ -782,7 +782,7 @@ Channel
 
 all_raw_bval
   .merge(all_bids_bval)
-  .sort()
+  .toSortedList()
   .set{all_bval}
 
 Channel
@@ -799,7 +799,7 @@ Channel
 
 all_raw_bvec
   .merge(all_bids_bvec)
-  .sort()
+  .toSortedList()
   .set{all_bvec}
 
 
@@ -840,7 +840,7 @@ Channel
 
 all_raw_t1
   .merge(all_bids_t1)
-  .sort()
+  .toedList()
   .set{all_t1}
 
 process QC_Raw_T1 {
@@ -870,18 +870,18 @@ process QC_Raw_T1 {
 Channel
     .fromPath("$input/**/*dwi.nii.gz", maxDepth:1)
     .map{it}
-    .toSortedList()
+    .toedList()
     .set{all_raw_dwi}
 
 Channel
     .fromPath("$input/sub-*/**/*dwi.nii.gz", maxDepth:4)
     .map{it}
-    .toSortedList()
+    .toedList()
     .set{all_bids_dwi}
 
 all_raw_dwi
   .merge(all_bids_dwi)
-  .sort()
+  .toSortedList()
   .set{all_dwi}
 
 process QC_Raw_DWI {
