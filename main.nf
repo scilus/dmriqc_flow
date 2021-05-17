@@ -782,7 +782,7 @@ Channel
 
 all_raw_bval
   .merge(all_bids_bval)
-  .sort()
+  .toSortedList()
   .set{all_bval}
 
 Channel
@@ -799,7 +799,7 @@ Channel
 
 all_raw_bvec
   .merge(all_bids_bvec)
-  .sort()
+  .toSortedList()
   .set{all_bvec}
 
 
@@ -840,7 +840,7 @@ Channel
 
 all_raw_t1
   .merge(all_bids_t1)
-  .sort()
+  .toSortedList()
   .set{all_t1}
 
 process QC_Raw_T1 {
@@ -881,7 +881,7 @@ Channel
 
 all_raw_dwi
   .merge(all_bids_dwi)
-  .sort()
+  .toSortedList()
   .set{all_dwi}
 
 process QC_Raw_DWI {
