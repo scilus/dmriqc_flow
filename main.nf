@@ -723,7 +723,7 @@ process QC_Local_Tracking_Mask {
     file "libs"
 
     when:
-        params.run_qc_tracking_mask
+        params.run_qc_tracking_mask && tracking_mask.size()
 
     script:
     """
@@ -753,7 +753,7 @@ process QC_Local_Seeding_Mask {
     file "libs"
 
     when:
-        params.run_qc_seeding_mask
+        params.run_qc_seeding_mask && seeding_mask.size()
 
     script:
     """
