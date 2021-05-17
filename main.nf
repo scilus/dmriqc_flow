@@ -596,7 +596,7 @@ Channel
     .set{wm_masks}
 
 wm_maps
-  .merge(wm_masks)
+  .mix(wm_masks)
   .toSortedList()
   .set{wm_for_seg}
 
@@ -613,7 +613,7 @@ Channel
     .set{gm_masks}
 
 gm_maps
-  .merge(gm_masks)
+  .mix(gm_masks)
   .toSortedList()
   .set{gm_for_seg}
 
@@ -630,7 +630,7 @@ Channel
     .set{csf_masks}
 
 csf_maps
-  .merge(csf_masks)
+  .mix(csf_masks)
   .toSortedList()
   .set{csf_for_seg}
 
@@ -814,7 +814,7 @@ Channel
     .set{all_bids_bval}
 
 all_raw_bval
-  .merge(all_bids_bval)
+  .mix(all_bids_bval)
   .toSortedList()
   .set{all_bval}
 
@@ -831,7 +831,7 @@ Channel
     .set{all_bids_bvec}
 
 all_raw_bvec
-  .merge(all_bids_bvec)
+  .mix(all_bids_bvec)
   .toSortedList()
   .set{all_bvec}
 
@@ -872,7 +872,7 @@ Channel
     .set{all_bids_t1}
 
 all_raw_t1
-  .merge(all_bids_t1)
+  .mix(all_bids_t1)
   .toSortedList()
   .set{all_t1}
 
@@ -913,7 +913,7 @@ Channel
     .set{all_bids_dwi}
 
 all_raw_dwi
-  .merge(all_bids_dwi)
+  .mix(all_bids_dwi)
   .toSortedList()
   .set{all_dwi}
 
