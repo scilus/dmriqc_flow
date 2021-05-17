@@ -53,19 +53,19 @@ else {
 
 
 Channel
-    .fromPath("$input/**/Segment_Tissues/*mask_wm.nii.gz", maxDepth:3)
+    .fromPath("$input/**/Segment_*/*mask_wm.nii.gz", maxDepth:3)
     .map{it}
     .toSortedList()
     .into{wm_for_resampled_dwi;wm_for_dti;wm_for_fodf;wm_for_registration}
 
 Channel
-    .fromPath("$input/**/Segment_Tissues/*mask_gm.nii.gz", maxDepth:3)
+    .fromPath("$input/**/Segment_*/*mask_gm.nii.gz", maxDepth:3)
     .map{it}
     .toSortedList()
     .into{gm_for_resampled_dwi;gm_for_dti;gm_for_fodf;gm_for_registration}
 
 Channel
-    .fromPath("$input/**/Segment_Tissues/*mask_csf.nii.gz", maxDepth:3)
+    .fromPath("$input/**/Segment_*/*mask_csf.nii.gz", maxDepth:3)
     .map{it}
     .toSortedList()
     .into{csf_for_resampled_dwi;csf_for_dti;csf_for_fodf;csf_for_registration}
@@ -590,10 +590,32 @@ Channel
     .set{wm_maps}
 
 Channel
+    .fromPath("$input/**/Segment_Freesurfer/*mask_wm.nii.gz", maxDepth:3)
+    .map{it}
+    .toSortedList()
+    .set{wm_masks}
+
+wm_maps
+  .merge(wm_masks)
+  .toSortedList()
+  .set{wm_for_seg}
+
+Channel
     .fromPath("$input/**/Segment_Tissues/*map_gm.nii.gz", maxDepth:3)
     .map{it}
     .toSortedList()
     .set{gm_maps}
+
+Channel
+    .fromPath("$input/**/Segment_Freesurfer/*mask_gm.nii.gz", maxDepth:3)
+    .map{it}
+    .toSortedList()
+    .set{gm_masks}
+
+gm_maps
+  .merge(gm_masks)
+  .toSortedList()
+  .set{gm_for_seg}
 
 Channel
     .fromPath("$input/**/Segment_Tissues/*map_csf.nii.gz", maxDepth:3)
@@ -601,13 +623,24 @@ Channel
     .toSortedList()
     .set{csf_maps}
 
+Channel
+    .fromPath("$input/**/Segment_Freesurfer/*mask_csf.nii.gz", maxDepth:3)
+    .map{it}
+    .toSortedList()
+    .set{csf_masks}
+
+csf_maps
+  .merge(csf_masks)
+  .toSortedList()
+  .set{csf_for_seg}
+
 process QC_Segment_Tissues {
     cpus params.segment_tissues_nb_threads
 
     input:
-    file(wm) from wm_maps
-    file(gm) from gm_maps
-    file(csf) from csf_maps
+    file(wm) from wm_for_seg
+    file(gm) from gm_for_seg
+    file(csf) from csf_for_seg
 
     output:
     file "report_segment_tissues.html"
