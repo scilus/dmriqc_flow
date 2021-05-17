@@ -804,13 +804,11 @@ process QC_Register_T1 {
 Channel
     .fromPath("$input/**/*bval", maxDepth:1)
     .map{it}
-    .toSortedList()
     .set{all_raw_bval}
 
 Channel
     .fromPath("$input/sub-*/**/*dwi.bval", maxDepth:4)
     .map{it}
-    .toSortedList()
     .set{all_bids_bval}
 
 all_raw_bval
@@ -821,13 +819,11 @@ all_raw_bval
 Channel
     .fromPath("$input/**/*bvec", maxDepth:1)
     .map{it}
-    .toSortedList()
     .set{all_raw_bvec}
 
 Channel
     .fromPath("$input/sub-*/**/*dwi.bvec", maxDepth:4)
     .map{it}
-    .toSortedList()
     .set{all_bids_bvec}
 
 all_raw_bvec
@@ -862,13 +858,11 @@ process QC_DWI_Protocol {
 Channel
     .fromPath("$input/**/*t1.nii.gz", maxDepth:2)
     .map{it}
-    .toSortedList()
     .set{all_raw_t1}
 
 Channel
     .fromPath("$input/sub-*/**/*T1w.nii.gz", maxDepth:4)
     .map{it}
-    .toSortedList()
     .set{all_bids_t1}
 
 all_raw_t1
@@ -903,13 +897,11 @@ process QC_Raw_T1 {
 Channel
     .fromPath("$input/**/*dwi.nii.gz", maxDepth:1)
     .map{it}
-    .toSortedList()
     .set{all_raw_dwi}
 
 Channel
     .fromPath("$input/sub-*/**/*dwi.nii.gz", maxDepth:4)
     .map{it}
-    .toSortedList()
     .set{all_bids_dwi}
 
 all_raw_dwi
