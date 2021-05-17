@@ -586,13 +586,11 @@ process QC_Tracking {
 Channel
     .fromPath("$input/**/Segment_Tissues/*map_wm.nii.gz", maxDepth:3)
     .map{it}
-    .toSortedList()
     .set{wm_maps}
 
 Channel
     .fromPath("$input/**/Segment_Freesurfer/*mask_wm.nii.gz", maxDepth:3)
     .map{it}
-    .toSortedList()
     .set{wm_masks}
 
 wm_maps
@@ -603,13 +601,11 @@ wm_maps
 Channel
     .fromPath("$input/**/Segment_Tissues/*map_gm.nii.gz", maxDepth:3)
     .map{it}
-    .toSortedList()
     .set{gm_maps}
 
 Channel
     .fromPath("$input/**/Segment_Freesurfer/*mask_gm.nii.gz", maxDepth:3)
     .map{it}
-    .toSortedList()
     .set{gm_masks}
 
 gm_maps
@@ -620,13 +616,11 @@ gm_maps
 Channel
     .fromPath("$input/**/Segment_Tissues/*map_csf.nii.gz", maxDepth:3)
     .map{it}
-    .toSortedList()
     .set{csf_maps}
 
 Channel
     .fromPath("$input/**/Segment_Freesurfer/*mask_csf.nii.gz", maxDepth:3)
     .map{it}
-    .toSortedList()
     .set{csf_masks}
 
 csf_maps
