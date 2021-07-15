@@ -918,15 +918,15 @@ process QC_Raw_DWI {
 }
 
 anat_rbx = Channel
-    .fromFilePairs("$params.input/**/*anat.nii.gz",
-              maxDepth: 1,
+    .fromFilePairs("$params.input/**/Register_Anat/*native_anat.nii.gz",
+              maxDepth: 2,
               size: 1,
-              flat: true) { it.parent.name }
+              flat: true) { it.parent.parent.name }
 
 bundles_rbx = Channel
-    .fromFilePairs("$params.input/**/*.trk",
-                   maxDepth: 1,
-                   size: -1) { it.parent.name }
+    .fromFilePairs("$params.input/**/Clean_Bundles/*.trk",
+                   maxDepth: 2,
+                   size: -1) { it.parent.parent.name }
 
 bundles_rbx
     .flatMap{ sid, bundles -> bundles.collect{ [sid, it] } }
@@ -956,7 +956,7 @@ process Screenshots_RBx {
     export OPENBLAS_NUM_THREADS=1
 
     mrconvert $anat anat.nii.gz
-    visualize_bundles_mosaic.py anat.nii.gz $bundles ${sid}__${b_name}.png -f --light_screenshot --no_first_column --zoom 2
+    scil_visualize_bundles_mosaic.py anat.nii.gz $bundles ${sid}__${b_name}.png -f --light_screenshot --no_information
     """
 }
 
