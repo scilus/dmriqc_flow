@@ -10,27 +10,28 @@ nextflow run main.nf [OPTIONAL_ARGUMENTS] (--input)
 DESCRIPTION
 
     --input=/path/to/[root]             Input folder containing multiple subjects
-                                        TractoFlow input or TractoFlow results folder
-                                        All the files must contain subject id prefix
+                                        TractoFlow input (bids structure or not)
+                                        or TractoFlow results folder
+                                        All the files must contain subject id prefix or follow BIDS structure.
                                         (e.g. subj1__t1.nii.gz, subj1__bval, subj1_bvec)
 
-    PROFILES (using -profile option (e.g. -profile use_cuda,fully_reproducible))
+    --output_dir                        Directory where to write the final results.
+                                        By default, will be in "./results_QC"
 
-    input_qc                            Create QC reports for your raw data
-                                        --input structure: TractoFlow input folder
+    PROFILES (using -profile option (e.g. -profile tractoflow_qc_light,cbrain))
 
-    tractoflow_qc_light                 Create QC reports for your TractoFlow results
-                                        Output important steps only
-                                        --input structure: TractoFlow results folder
+    input_qc                            Create QC reports for your raw data (Can be a BIDS structure)
 
-    tractoflow_qc_all                   Create QC reports for your TractoFlow results
-                                        Output all steps
-                                        --input structure: TractoFlow results folder
+    tractoflow_qc_light                 Create QC reports for your TractoFlow results:
+                                        Output important steps only.
+
+    tractoflow_qc_all                   Create QC reports for your TractoFlow results:
+                                        Output all steps.
+
+    cbrain                              When this profile is used, Nextflow will copy all the output files in publishDir and not use symlinks.
+                                        cbrain profile should be used as a second profile (e.g -profile input_qc,cbrain)
 
     rbx_qc                              Create QC reports for your rbx-flow results
-                                        --input structure: for each subject, a folder with all the trk inside
-                                        and an anatomy named anat.nii.gz or if bundles come from rbx_flow you
-                                        can use tree_for_rbx_qc.sh in combine_flows repository.
 
 
 Files should be compressed Nifti files (.nii.gz)

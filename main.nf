@@ -14,7 +14,7 @@ if(params.help) {
     return
 }
 
-log.info "dMRIqc-Flow"
+log.info "dMRIqc_flow"
 log.info "==========="
 log.info ""
 log.info "Start time: $workflow.start"
@@ -30,9 +30,15 @@ workflow.onComplete {
     log.info "Execution duration: $workflow.duration"
 }
 
-if (workflow.profile != "input_qc" && workflow.profile != "tractoflow_qc_light" && workflow.profile != "tractoflow_qc_all" && workflow.profile != "rbx_qc")
+String[] theArr = workflow.profile.split(",");
+List<String> profiles = new ArrayList<String>();
+for (String item : theArr) {
+   profiles.add(item);
+}
+
+if (profiles.get(0) != "input_qc" && profiles.get(0) != "tractoflow_qc_light" && profiles.get(0) != "tractoflow_qc_all" && profiles.get(0) != "rbx_qc")
 {
-    error "Error ~ Please select a profile (-profile): input_qc, tractoflow_qc_light or tractoflow_qc_all."
+    error "Error ~ Please select a profile (-profile): input_qc, tractoflow_qc_light, tractoflow_qc_all or rbx_qc."
 }
 
 
@@ -471,7 +477,6 @@ process QC_FRF {
 
     output:
     file "report_compute_frf.html"
-    file "data"
     file "libs"
 
     when:
@@ -814,16 +819,39 @@ process QC_Register_T1 {
 }
 
 Channel
-    .fromPath("$input/**/*bval", maxDepth:2)
+    .fromPath("$input/**/*bval", maxDepth:1)
     .map{it}
     .toSortedList()
-    .set{all_bval}
+    .set{all_raw_bval}
 
 Channel
-    .fromPath("$input/**/*bvec", maxDepth:2)
+    .fromPath("$input/sub-*/**/*dwi.bval", maxDepth:4)
     .map{it}
     .toSortedList()
-    .set{all_bvec}
+    .set{all_bids_bval}
+
+all_raw_bval
+  .merge(all_bids_bval)
+  .toSortedList()
+  .set{all_bval}
+
+Channel
+    .fromPath("$input/**/*bvec", maxDepth:1)
+    .map{it}
+    .toSortedList()
+    .set{all_raw_bvec}
+
+Channel
+    .fromPath("$input/sub-*/**/*dwi.bvec", maxDepth:4)
+    .map{it}
+    .toSortedList()
+    .set{all_bids_bvec}
+
+all_raw_bvec
+  .merge(all_bids_bvec)
+  .toSortedList()
+  .set{all_bvec}
+
 
 process QC_DWI_Protocol {
     cpus 1
@@ -855,7 +883,18 @@ Channel
     .fromPath("$input/**/*t1.nii.gz", maxDepth:2)
     .map{it}
     .toSortedList()
-    .set{all_t1}
+    .set{all_raw_t1}
+
+Channel
+    .fromPath("$input/sub-*/**/*T1w.nii.gz", maxDepth:4)
+    .map{it}
+    .toSortedList()
+    .set{all_bids_t1}
+
+all_raw_t1
+  .merge(all_bids_t1)
+  .toSortedList()
+  .set{all_t1}
 
 process QC_Raw_T1 {
     cpus params.raw_t1_nb_threads
@@ -885,10 +924,21 @@ process QC_Raw_T1 {
 }
 
 Channel
-    .fromPath("$input/**/*dwi.nii.gz", maxDepth:2)
+    .fromPath("$input/**/*dwi.nii.gz", maxDepth:1)
     .map{it}
     .toSortedList()
-    .set{all_dwi}
+    .set{all_raw_dwi}
+
+Channel
+    .fromPath("$input/sub-*/**/*dwi.nii.gz", maxDepth:4)
+    .map{it}
+    .toSortedList()
+    .set{all_bids_dwi}
+
+all_raw_dwi
+  .merge(all_bids_dwi)
+  .toSortedList()
+  .set{all_dwi}
 
 process QC_Raw_DWI {
     cpus params.raw_dwi_nb_threads
