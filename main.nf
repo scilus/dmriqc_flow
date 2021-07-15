@@ -530,37 +530,32 @@ process QC_FODF {
 }
 
 Channel
-    .fromPath("$input/**/PFT_Tracking/*.trk", maxDepth:3)
-    .map{it}
-    .toSortedList()
-    .into{pft_tractograms_count;pft_tractograms}
-
-Channel
-    .fromPath("$input/**/Local_Tracking/*.trk", maxDepth:3)
-    .map{it}
-    .toSortedList()
-    .into{local_tractograms_count;local_tractograms}
+    .fromPath("$input/**/*_Tracking/*.trk", maxDepth:3)
+    .map{["report", it.parent.parent.name, it]}
+    .set{tractograms}
 
 Channel
     .fromPath("$input/**/Register_T1/*t1_warped.nii.gz", maxDepth:3)
     .map{it}
     .toSortedList()
-    .into{t1_warped_for_tracking;t1_warped_for_registration}
+    .set{t1_warped_for_registration}
 
-pft_tractograms.concat(local_tractograms).flatten().toList().set{tractograms}
+Channel
+    .fromPath("$input/**/Register_T1/*t1_warped.nii.gz", maxDepth:3)
+    .map{["report", it.parent.parent.name, it]}
+    .set{t1_warped_for_tracking}
 
-add_t1s = false
-if (pft_tractograms_count.flatten().count().val > 0 && local_tractograms_count.flatten().count().val > 0)
-{
-    add_t1s = true
-}
+tractograms
+    .combine(t1_warped_for_tracking, by:[0,1])
+    .groupTuple()
+    .map{it -> it[2..-1]}
+    .set{tracking_t1}
 
 process QC_Tracking {
     cpus params.tracking_nb_threads
 
     input:
-    file(tracking) from tractograms
-    file(t1) from t1_warped_for_tracking
+    set file(tracking), file("*.nii.gz") from tracking_t1
 
     output:
     file "report_tracking.html"
@@ -571,16 +566,9 @@ process QC_Tracking {
         params.run_qc_tracking
 
     script:
-    if (add_t1s){
-        """
-        dmriqc_tractogram.py report_tracking.html --tractograms $tracking --t1 $t1 $t1
-        """
-    }
-    else{
-        """
-        dmriqc_tractogram.py report_tracking.html --tractograms $tracking --t1 $t1
-        """
-    }
+    """
+    dmriqc_tractogram.py report_tracking.html --tractograms $tracking --t1 *.nii.gz
+    """
 }
 
 Channel
