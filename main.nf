@@ -52,19 +52,19 @@ else {
 
 
 Channel
-    .fromPath("$input/**/Segment_Tissues/*mask_wm.nii.gz", maxDepth:3)
+    .fromPath("$input/**/Segment_*/*mask_wm.nii.gz", maxDepth:3)
     .map{it}
     .toSortedList()
     .into{wm_for_resampled_dwi;wm_for_dti;wm_for_fodf;wm_for_registration}
 
 Channel
-    .fromPath("$input/**/Segment_Tissues/*mask_gm.nii.gz", maxDepth:3)
+    .fromPath("$input/**/Segment_*/*mask_gm.nii.gz", maxDepth:3)
     .map{it}
     .toSortedList()
     .into{gm_for_resampled_dwi;gm_for_dti;gm_for_fodf;gm_for_registration}
 
 Channel
-    .fromPath("$input/**/Segment_Tissues/*mask_csf.nii.gz", maxDepth:3)
+    .fromPath("$input/**/Segment_*/*mask_csf.nii.gz", maxDepth:3)
     .map{it}
     .toSortedList()
     .into{csf_for_resampled_dwi;csf_for_dti;csf_for_fodf;csf_for_registration}
@@ -559,37 +559,32 @@ process QC_FODF {
 }
 
 Channel
-    .fromPath("$input/**/PFT_Tracking/*.trk", maxDepth:3)
-    .map{it}
-    .toSortedList()
-    .into{pft_tractograms_count;pft_tractograms}
-
-Channel
-    .fromPath("$input/**/Local_Tracking/*.trk", maxDepth:3)
-    .map{it}
-    .toSortedList()
-    .into{local_tractograms_count;local_tractograms}
+    .fromPath("$input/**/*_Tracking/*.trk", maxDepth:3)
+    .map{["report", it.parent.parent.name, it]}
+    .set{tractograms}
 
 Channel
     .fromPath("$input/**/Register_T1/*t1_warped.nii.gz", maxDepth:3)
     .map{it}
     .toSortedList()
-    .into{t1_warped_for_tracking;t1_warped_for_registration}
+    .set{t1_warped_for_registration}
 
-pft_tractograms.concat(local_tractograms).flatten().toList().set{tractograms}
+Channel
+    .fromPath("$input/**/Register_T1/*t1_warped.nii.gz", maxDepth:3)
+    .map{["report", it.parent.parent.name, it]}
+    .set{t1_warped_for_tracking}
 
-add_t1s = false
-if (pft_tractograms_count.flatten().count().val > 0 && local_tractograms_count.flatten().count().val > 0)
-{
-    add_t1s = true
-}
+tractograms
+    .combine(t1_warped_for_tracking, by:[0,1])
+    .groupTuple()
+    .map{it -> it[2..-1]}
+    .set{tracking_t1}
 
 process QC_Tracking {
     cpus params.tracking_nb_threads
 
     input:
-    file(tracking) from tractograms
-    file(t1) from t1_warped_for_tracking
+    set file(tracking), file("*warped.nii.gz") from tracking_t1
 
     output:
     file "report_tracking.html"
@@ -600,49 +595,63 @@ process QC_Tracking {
         params.run_qc_tracking
 
     script:
-    if (add_t1s){
-        """
-        export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
-        export OMP_NUM_THREADS=1
-        export OPENBLAS_NUM_THREADS=1
-        dmriqc_tractogram.py report_tracking.html --tractograms $tracking --t1 $t1 $t1
-        """
-    }
-    else{
-        """
-        export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
-        export OMP_NUM_THREADS=1
-        export OPENBLAS_NUM_THREADS=1
-        dmriqc_tractogram.py report_tracking.html --tractograms $tracking --t1 $t1
-        """
-    }
+    """
+    dmriqc_tractogram.py report_tracking.html --tractograms $tracking --t1 *warped.nii.gz
+    """
 }
 
 Channel
     .fromPath("$input/**/Segment_Tissues/*map_wm.nii.gz", maxDepth:3)
     .map{it}
-    .toSortedList()
     .set{wm_maps}
+
+Channel
+    .fromPath("$input/**/Segment_Freesurfer/*mask_wm.nii.gz", maxDepth:3)
+    .map{it}
+    .set{wm_masks}
+
+wm_maps
+  .mix(wm_masks)
+  .toSortedList()
+  .set{wm_for_seg}
 
 Channel
     .fromPath("$input/**/Segment_Tissues/*map_gm.nii.gz", maxDepth:3)
     .map{it}
-    .toSortedList()
     .set{gm_maps}
+
+Channel
+    .fromPath("$input/**/Segment_Freesurfer/*mask_gm.nii.gz", maxDepth:3)
+    .map{it}
+    .set{gm_masks}
+
+gm_maps
+  .mix(gm_masks)
+  .toSortedList()
+  .set{gm_for_seg}
 
 Channel
     .fromPath("$input/**/Segment_Tissues/*map_csf.nii.gz", maxDepth:3)
     .map{it}
-    .toSortedList()
     .set{csf_maps}
+
+Channel
+    .fromPath("$input/**/Segment_Freesurfer/*mask_csf.nii.gz", maxDepth:3)
+    .map{it}
+    .set{csf_masks}
+
+csf_maps
+  .mix(csf_masks)
+  .toSortedList()
+  .set{csf_for_seg}
 
 process QC_Segment_Tissues {
     cpus params.segment_tissues_nb_threads
 
     input:
-    file(wm) from wm_maps
-    file(gm) from gm_maps
-    file(csf) from csf_maps
+    file(wm) from wm_for_seg
+    file(gm) from gm_for_seg
+    file(csf) from csf_for_seg
 
     output:
     file "report_segment_tissues.html"
@@ -697,7 +706,7 @@ process QC_PFT_Maps {
     file "libs"
 
     when:
-        params.run_qc_pft_maps
+        params.run_qc_pft_maps && seeding_mask.size()
 
     script:
     """
@@ -731,7 +740,7 @@ process QC_Local_Tracking_Mask {
     file "libs"
 
     when:
-        params.run_qc_tracking_mask
+        params.run_qc_tracking_mask && tracking_mask.size()
 
     script:
     """
@@ -764,7 +773,7 @@ process QC_Local_Seeding_Mask {
     file "libs"
 
     when:
-        params.run_qc_seeding_mask
+        params.run_qc_seeding_mask && seeding_mask.size()
 
     script:
     """
@@ -821,34 +830,30 @@ process QC_Register_T1 {
 Channel
     .fromPath("$input/**/*bval", maxDepth:1)
     .map{it}
-    .toSortedList()
     .set{all_raw_bval}
 
 Channel
     .fromPath("$input/sub-*/**/*dwi.bval", maxDepth:4)
     .map{it}
-    .toSortedList()
     .set{all_bids_bval}
 
 all_raw_bval
-  .merge(all_bids_bval)
+  .mix(all_bids_bval)
   .toSortedList()
   .set{all_bval}
 
 Channel
     .fromPath("$input/**/*bvec", maxDepth:1)
     .map{it}
-    .toSortedList()
     .set{all_raw_bvec}
 
 Channel
     .fromPath("$input/sub-*/**/*dwi.bvec", maxDepth:4)
     .map{it}
-    .toSortedList()
     .set{all_bids_bvec}
 
 all_raw_bvec
-  .merge(all_bids_bvec)
+  .mix(all_bids_bvec)
   .toSortedList()
   .set{all_bvec}
 
@@ -882,17 +887,15 @@ process QC_DWI_Protocol {
 Channel
     .fromPath("$input/**/*t1.nii.gz", maxDepth:2)
     .map{it}
-    .toSortedList()
     .set{all_raw_t1}
 
 Channel
     .fromPath("$input/sub-*/**/*T1w.nii.gz", maxDepth:4)
     .map{it}
-    .toSortedList()
     .set{all_bids_t1}
 
 all_raw_t1
-  .merge(all_bids_t1)
+  .mix(all_bids_t1)
   .toSortedList()
   .set{all_t1}
 
@@ -926,17 +929,15 @@ process QC_Raw_T1 {
 Channel
     .fromPath("$input/**/*dwi.nii.gz", maxDepth:1)
     .map{it}
-    .toSortedList()
     .set{all_raw_dwi}
 
 Channel
     .fromPath("$input/sub-*/**/*dwi.nii.gz", maxDepth:4)
     .map{it}
-    .toSortedList()
     .set{all_bids_dwi}
 
 all_raw_dwi
-  .merge(all_bids_dwi)
+  .mix(all_bids_dwi)
   .toSortedList()
   .set{all_dwi}
 
