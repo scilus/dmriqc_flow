@@ -28,6 +28,16 @@ DESCRIPTION
     tractoflow_qc_all                   Create QC reports for your TractoFlow results:
                                         Output all steps.
 
+    extractorflow_mni                   Create QC reports for your ExtractorFlow results.
+
+    extractorflow_mni_extended          Create QC reports for your ExtractorFlow results:
+                                        Output only when using --extended.
+
+    extractorflow_orig                  Create QC reports for your ExtractorFlow results:
+                                        Output only when using orig space options.
+
+    extractorflow_orig_extended         Create QC reports for your ExtractorFlow results:
+                                        Output only when using --extended and orig space options.
 
     cbrain                              When this profile is used, Nextflow will copy all the output files in publishDir and not use symlinks.
                                         cbrain profile should be used as a second profile (e.g -profile input_qc,cbrain)

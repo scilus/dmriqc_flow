@@ -1,7 +1,6 @@
 #!/usr/bin/env nextflow
 
 params.input = false
-params.fa_template = false
 params.help = false
 
 if(params.help) {
@@ -37,14 +36,20 @@ for (String item : theArr) {
    profiles.add(item);
 }
 
-if (profiles.get(0) != "input_qc" && profiles.get(0) != "tractoflow_qc_light" && profiles.get(0) != "tractoflow_qc_all")
+if (profiles.get(0) != "input_qc" && profiles.get(0) != "tractoflow_qc_light" && profiles.get(0) != "tractoflow_qc_all" && profiles.get(0) != "extractorflow_mni" && profiles.get(0) != "extractorflow_orig" && profiles.get(0) != "extractorflow_mni_extended" && profiles.get(0) != "extractorflow_orig_extended")
 {
-    error "Error ~ Please select a profile (-profile): input_qc, tractoflow_qc_light or tractoflow_qc_all."
+    error "Error ~ Please select a profile (-profile): input_qc, extractorflow, tractoflow_qc_light or tractoflow_qc_all or extractorflow_mni (_extended) or extractorflow_orig (_extended)."
 }
 
 
 if (params.input){
     log.info "Input: $params.input"
+    log.info "Run qc extractor: $params.run_qc_extractor"
+    log.info "Run qc extractor extended: $params.run_qc_extractor_extended"
+    log.info "Run qc extractor mni: $params.run_qc_extractor_mni"
+    log.info "Run qc extractor mni extended: $params.run_qc_extractor_mni_extended"
+    log.info "Run qc extractor orig: $params.run_qc_extractor_orig"
+    log.info "Run qc extractor orig extended: $params.run_qc_extractor_orig_extended"
     input = file(params.input)
 }
 else {
@@ -567,7 +572,7 @@ process QC_Tracking {
 
     script:
     """
-    dmriqc_tractogram.py report_tracking.html --tractograms $tracking --t1 *.nii.gz
+    dmriqc_tractogram.py report_tracking.html --tractograms $tracking --t1s *.nii.gz
     """
 }
 
@@ -913,4 +918,117 @@ process QC_Raw_DWI {
         --nb_threads $params.raw_dwi_nb_threads\
         --nb_columns $params.raw_dwi_nb_columns
     """
+}
+
+if (params.run_qc_extractor_mni){
+    Channel
+      .fromPath("$input/final_outputs/**/mni_space/*__plausible_mni_space.trk", maxDepth:5)
+      .map{["report", it.parent.parent.name, it]}
+      .set{trk_extractor}
+
+    Channel
+      .fromPath("$input/final_outputs/**/mni_space/*__t1_mni_space.nii.gz", maxDepth:5)
+      .map{["report", it.parent.parent.name, it]}
+      .into{t1_extractor;t1_extractor_extended}
+
+    trk_extractor
+      .combine(t1_extractor, by:[0,1])
+      .groupTuple()
+      .map{it -> it[2..-1]}
+      .set{extractor_trk_t1}
+}
+else if (params.run_qc_extractor_orig){
+  Channel
+    .fromPath("$input/final_outputs/**/orig_space/*__plausible_orig_space.trk", maxDepth:5)
+    .map{["report", it.parent.parent.name, it]}
+    .set{trk_extractor}
+
+  Channel
+    .fromPath("$input/final_outputs/**/orig_space/*__t1_orig_space.nii.gz", maxDepth:5)
+    .map{["report", it.parent.parent.name, it]}
+    .into{t1_extractor;t1_extractor_extended}
+
+  trk_extractor
+    .combine(t1_extractor, by:[0,1])
+    .groupTuple()
+    .map{it -> it[2..-1]}
+    .set{extractor_trk_t1}
+}
+
+process QC_Extractor_MNI_Tracking {
+    cpus params.tracking_nb_threads
+
+    input:
+      set file(trk), file(t1) from extractor_trk_t1
+
+    output:
+      file("report_tracking_mni.html") optional true
+      file("report_tracking_orig.html") optional true
+
+    when:
+        params.run_qc_extractor
+
+    script:
+    if (params.run_qc_extractor_mni){
+    """
+    dmriqc_tractogram.py report_tracking_mni.html --tractograms $trk --t1s $t1
+    """
+    }
+    else{
+    """
+    dmriqc_tractogram.py report_tracking_orig.html --tractograms $trk --t1s $t1
+    """
+    }
+}
+
+list_extended = params.list_trk_extended?.tokenize(',')
+extractor_trk_t1_extended = Channel.empty()
+if (params.run_qc_extractor_mni_extended){
+  Channel
+    .fromPath("$input/final_outputs/**/mni_space/*__*_mni_space.trk", maxDepth:5)
+    .map{["report", it.parent.parent.name, it]}
+    .set{trk_extractor_extended}
+
+  trk_extractor_extended
+    .combine(t1_extractor_extended, by:[0,1])
+    .groupTuple()
+    .map{it -> it[2..-1]}
+    .into{extractor_trk_t1_extended;extractor_trk_t1_extended_echo}
+}
+else if(params.run_qc_extractor_orig_extended){
+  Channel
+    .fromPath("$input/final_outputs/**/orig_space/*__*_orig_space.trk", maxDepth:5)
+    .map{["report", it.parent.parent.name, it]}
+    .set{trk_extractor_extended}
+
+  trk_extractor_extended
+    .combine(t1_extractor_extended, by:[0,1])
+    .groupTuple()
+    .map{it -> it[2..-1]}
+    .set{extractor_trk_t1_extended}
+}
+
+process QC_Extractor_MNI_Tracking_Extended {
+    cpus params.tracking_nb_threads
+
+    input:
+      set file(trk), file(t1) from extractor_trk_t1_extended
+
+    output:
+      file("report_tracking_extended.html")
+
+    when:
+        params.run_qc_extractor_extended
+
+    script:
+    if (params.run_qc_extractor_mni_extended){
+    """
+    dmriqc_tractogram.py report_tracking_mni_extended.html --tractograms $trk --t1s $t1 --bundles
+    """
+    }
+    else{
+    """
+    dmriqc_tractogram.py report_tracking_orig_extended.html --tractograms $trk --t1s $t1 --bundles
+    """
+    }
 }
