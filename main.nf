@@ -995,7 +995,32 @@ bundles_rbx
     .combine(anat_rbx, by:0)
     .set{bundles_anat_for_screenshots}
 
-process Screenshots_RBx {
+if (params.run_qc_extractor_mni_extended){
+    Channel
+      .fromPath("$input/final_outputs/**/mni_space/*__*_mni_space.trk", maxDepth:5)
+      .map{["report", it.parent.parent.name, it]}
+      .set{trk_extractor_extended}
+
+    trk_extractor_extended
+      .combine(t1_extractor_extended, by:[0,1])
+      .groupTuple()
+      .map{it -> it[2..-1]}
+      .into{bundles_anat_for_screenshots}
+}
+else if(params.run_qc_extractor_orig_extended){
+    Channel
+      .fromPath("$input/final_outputs/**/orig_space/*__*_orig_space.trk", maxDepth:5)
+      .map{["report", it.parent.parent.name, it]}
+      .set{trk_extractor_extended}
+
+    trk_extractor_extended
+      .combine(t1_extractor_extended, by:[0,1])
+      .groupTuple()
+      .map{it -> it[2..-1]}
+      .set{bundles_anat_for_screenshots}
+}
+
+process Screenshots_Bundles {
     cpus 2
     stageInMode 'copy'
     publishDir {"./results_QC/$task.process/${sid}"}
@@ -1023,21 +1048,23 @@ process Screenshots_RBx {
 screenshots_for_report
     .groupTuple(by: 1, sort:true)
     .map{b_names, _, bundles -> [b_names.unique().join(",").replaceAll(",", " "), bundles].toList()}
-    .set{screenshots_for_qc_rbx}
+    .into{screenshots_for_qc_rbx;screenshots_for_qc_rbx_echo}
 
-process QC_RBx {
+screenshots_for_qc_rbx_echo.println()
+
+process QC_Bundles {
     cpus 1
 
     input:
     set b_names, file(bundles) from screenshots_for_qc_rbx
 
     output:
-    file "report_rbx.html"
+    file "report_*.html"
     file "data"
     file "libs"
 
     when:
-        params.run_qc_rbx
+        params.run_qc_rbx || params.run_qc_extractor_extended
 
     script:
     """
@@ -1050,9 +1077,25 @@ process QC_RBx {
         mkdir -p \${i}
         mv *\${i}.png \${i}
     done
-    dmriqc_from_screenshot.py report_rbx.html ${b_names} --sym_link
     """
+    if (params.run_qc_rbx){
+        """
+        dmriqc_from_screenshot.py report_rbx.html ${b_names} --sym_link
+        """
+    }
+    else if(params.run_qc_extractor_mni_extended){
+        """
+        dmriqc_from_screenshot.py report_extractor_mni_extended.html ${b_names} --sym_link
+        """
+    }
+    else if(params.run_qc_extractor_orig_extended){
+        """
+        dmriqc_from_screenshot.py report_extractor_orig_extended.html ${b_names} --sym_link
+        """
+    }
+}
 
+extractor_trk_t1 = Channel.empty()
 if (params.run_qc_extractor_mni){
     Channel
       .fromPath("$input/final_outputs/**/mni_space/*__plausible_mni_space.trk", maxDepth:5)
@@ -1110,58 +1153,6 @@ process QC_Extractor_MNI_Tracking {
     else{
     """
     dmriqc_tractogram.py report_tracking_orig.html --tractograms $trk --t1s $t1
-    """
-    }
-}
-
-list_extended = params.list_trk_extended?.tokenize(',')
-extractor_trk_t1_extended = Channel.empty()
-if (params.run_qc_extractor_mni_extended){
-  Channel
-    .fromPath("$input/final_outputs/**/mni_space/*__*_mni_space.trk", maxDepth:5)
-    .map{["report", it.parent.parent.name, it]}
-    .set{trk_extractor_extended}
-
-  trk_extractor_extended
-    .combine(t1_extractor_extended, by:[0,1])
-    .groupTuple()
-    .map{it -> it[2..-1]}
-    .into{extractor_trk_t1_extended;extractor_trk_t1_extended_echo}
-}
-else if(params.run_qc_extractor_orig_extended){
-  Channel
-    .fromPath("$input/final_outputs/**/orig_space/*__*_orig_space.trk", maxDepth:5)
-    .map{["report", it.parent.parent.name, it]}
-    .set{trk_extractor_extended}
-
-  trk_extractor_extended
-    .combine(t1_extractor_extended, by:[0,1])
-    .groupTuple()
-    .map{it -> it[2..-1]}
-    .set{extractor_trk_t1_extended}
-}
-
-process QC_Extractor_MNI_Tracking_Extended {
-    cpus params.tracking_nb_threads
-
-    input:
-      set file(trk), file(t1) from extractor_trk_t1_extended
-
-    output:
-      file("report_tracking_extended.html")
-
-    when:
-        params.run_qc_extractor_extended
-
-    script:
-    if (params.run_qc_extractor_mni_extended){
-    """
-    dmriqc_tractogram.py report_tracking_mni_extended.html --tractograms $trk --t1s $t1 --bundles
-    """
-    }
-    else{
-    """
-    dmriqc_tractogram.py report_tracking_orig_extended.html --tractograms $trk --t1s $t1 --bundles
     """
     }
 }
