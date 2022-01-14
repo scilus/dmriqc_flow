@@ -1048,9 +1048,7 @@ process Screenshots_Bundles {
 screenshots_for_report
     .groupTuple(by: 1, sort:true)
     .map{b_names, _, bundles -> [b_names.unique().join(",").replaceAll(",", " "), bundles].toList()}
-    .into{screenshots_for_qc_rbx;screenshots_for_qc_rbx_echo}
-
-screenshots_for_qc_rbx_echo.println()
+    .set{screenshots_for_qc_rbx}
 
 process QC_Bundles {
     cpus 1
@@ -1067,29 +1065,48 @@ process QC_Bundles {
         params.run_qc_rbx || params.run_qc_extractor_extended
 
     script:
-    """
-    export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
-    export OMP_NUM_THREADS=1
-    export OPENBLAS_NUM_THREADS=1
-    for i in $b_names;
-    do
-        echo \${i}
-        mkdir -p \${i}
-        mv *\${i}.png \${i}
-    done
-    """
     if (params.run_qc_rbx){
         """
+        export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
+        export OMP_NUM_THREADS=1
+        export OPENBLAS_NUM_THREADS=1
+        for i in $b_names;
+        do
+            echo \${i}
+            mkdir -p \${i}
+            mv *\${i}.png \${i}
+        done
+
         dmriqc_from_screenshot.py report_rbx.html ${b_names} --sym_link
         """
     }
     else if(params.run_qc_extractor_mni_extended){
         """
+        export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
+        export OMP_NUM_THREADS=1
+        export OPENBLAS_NUM_THREADS=1
+        for i in $b_names;
+        do
+            echo \${i}
+            mkdir -p \${i}
+            mv *\${i}.png \${i}
+        done
+
         dmriqc_from_screenshot.py report_extractor_mni_extended.html ${b_names} --sym_link
         """
     }
     else if(params.run_qc_extractor_orig_extended){
         """
+        export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
+        export OMP_NUM_THREADS=1
+        export OPENBLAS_NUM_THREADS=1
+        for i in $b_names;
+        do
+            echo \${i}
+            mkdir -p \${i}
+            mv *\${i}.png \${i}
+        done
+
         dmriqc_from_screenshot.py report_extractor_orig_extended.html ${b_names} --sym_link
         """
     }
