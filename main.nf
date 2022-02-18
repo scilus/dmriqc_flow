@@ -35,9 +35,9 @@ for (String item : theArr) {
    profiles.add(item);
 }
 
-if ( profiles.get(0) != "input_qc" && profiles.get(0) != "tractoflow_qc_light" && profiles.get(0) != "tractoflow_qc_all" && profiles.get(0) != "rbx_qc" && profiles.get(0) != "extractorflow_mni" && profiles.get(0) != "extractorflow_orig" && profiles.get(0) != "extractorflow_mni_extended" && profiles.get(0) != "extractorflow_orig_extended")
+if ( profiles.get(0) != "input_qc" && profiles.get(0) != "tractoflow_qc_light" && profiles.get(0) != "tractoflow_qc_all" && profiles.get(0) != "rbx_qc" && profiles.get(0) != "extractorflow_qc_mni" && profiles.get(0) != "extractorflow_qc_orig" && profiles.get(0) != "extractorflow_qc_mni_extended")
 {
-    error "Error ~ Please select a profile (-profile): input_qc, extractorflow, tractoflow_qc_light or tractoflow_qc_all or extractorflow_mni (_extended) or extractorflow_orig (_extended)."
+    error "Error ~ Please select a profile (-profile): input_qc, extractorflow, tractoflow_qc_light or tractoflow_qc_all or extractorflow_qc_mni (_extended) or extractorflow_qc_orig (_extended)."
 }
 
 
@@ -563,10 +563,6 @@ process QC_FODF {
     """
 }
 
-Channel
-    .fromPath("$input/**/*_Tracking/*.trk", maxDepth:3)
-    .map{["report", it.parent.parent.name, it]}
-    .set{tractograms}
 
 Channel
     .fromPath("$input/**/Register_T1/*t1_warped.nii.gz", maxDepth:3)
@@ -574,25 +570,69 @@ Channel
     .toSortedList()
     .set{t1_warped_for_registration}
 
-Channel
-    .fromPath("$input/**/Register_T1/*t1_warped.nii.gz", maxDepth:3)
-    .map{["report", it.parent.parent.name, it]}
-    .set{t1_warped_for_tracking}
 
-tractograms
-    .combine(t1_warped_for_tracking, by:[0,1])
-    .groupTuple()
-    .map{it -> it[2..-1]}
-    .set{tracking_t1}
+if (params.run_qc_extractor_mni){
+    Channel
+        .fromPath("$input/final_outputs/**/mni_space/*__plausible_mni_space.trk", maxDepth:5)
+        .map{["report", it.parent.parent.name, it]}
+        .set{trk_extractor}
+
+    Channel
+        .fromPath("$input/final_outputs/**/mni_space/*__t1_mni_space.nii.gz", maxDepth:5)
+        .map{["report", it.parent.parent.name, it]}
+        .set{t1_extractor}
+
+    trk_extractor
+        .combine(t1_extractor, by:[0,1])
+        .groupTuple()
+        .map{it -> it[2..-1]}
+        .set{tracking_t1}
+}
+else if (params.run_qc_extractor_orig){
+    Channel
+        .fromPath("$input/final_outputs/**/orig_space/*__plausible_orig_space.trk", maxDepth:5)
+        .map{["report", it.parent.parent.name, it]}
+        .set{trk_extractor}
+
+    Channel
+        .fromPath("$input/final_outputs/**/orig_space/*__t1_orig_space.nii.gz", maxDepth:5)
+        .map{["report", it.parent.parent.name, it]}
+        .into{t1_extractor}
+
+    trk_extractor
+        .combine(t1_extractor, by:[0,1])
+        .groupTuple()
+        .map{it -> it[2..-1]}
+        .set{tracking_t1}
+}
+else
+{
+  Channel
+      .fromPath("$input/**/*_Tracking/*.trk", maxDepth:3)
+      .map{["report", it.parent.parent.name, it]}
+      .set{tractograms}
+
+  Channel
+      .fromPath("$input/**/Register_T1/*t1_warped.nii.gz", maxDepth:3)
+      .map{["report", it.parent.parent.name, it]}
+      .set{t1_warped_for_tracking}
+
+  tractograms
+      .combine(t1_warped_for_tracking, by:[0,1])
+      .groupTuple()
+      .map{it -> it[2..-1]}
+      .set{tracking_t1}
+}
+
 
 process QC_Tracking {
     cpus params.tracking_nb_threads
 
     input:
-    set file(tracking), file("*warped.nii.gz") from tracking_t1
+    set file(trk), file(t1) from tracking_t1
 
     output:
-    file "report_tracking.html"
+    file "report_*.html"
     file "data"
     file "libs"
 
@@ -600,13 +640,22 @@ process QC_Tracking {
         params.run_qc_tracking
 
     script:
-    """
-<<<<<<< HEAD
-    dmriqc_tractogram.py report_tracking.html --tractograms $tracking --t1s *.nii.gz
-=======
-    dmriqc_tractogram.py report_tracking.html --tractograms $tracking --t1 *warped.nii.gz
->>>>>>> master
-    """
+    if (params.run_qc_extractor_mni){
+        """
+        dmriqc_tractogram.py report_tracking_mni.html --tractograms $trk --t1 $t1
+        """
+    }
+    else if (params.run_qc_extractor_orig){
+        """
+        dmriqc_tractogram.py report_tracking_orig.html --tractograms $trk --t1 $t1
+        """
+    }
+    else
+    {
+        """
+        dmriqc_tractogram.py report_tracking.html --tractograms $trk --t1 $t1
+        """
+    }
 }
 
 Channel
@@ -977,47 +1026,63 @@ process QC_Raw_DWI {
     """
 }
 
-anat_rbx = Channel
-    .fromFilePairs("$params.input/**/Register_Anat/*native_anat.nii.gz",
-              maxDepth: 2,
-              size: 1,
-              flat: true) { it.parent.parent.name }
+bundles_anat_for_screenshots = Channel.empty()
+if (params.run_qc_rbx){
 
-bundles_rbx = Channel
-    .fromFilePairs("$params.input/**/Clean_Bundles/*.trk",
-                   maxDepth: 2,
-                   size: -1) { it.parent.parent.name }
+    anat_for_bundles = Channel
+        .fromFilePairs("$params.input/**/Register_Anat/*native_anat.nii.gz",
+                       maxDepth: 2,
+                       size: 1,
+                       flat: true) { it.parent.parent.name }
 
-bundles_rbx
-    .flatMap{ sid, bundles -> bundles.collect{ [sid, it] } }
-    .map{sid, bundle -> [sid, bundle.getName().replace(sid, "").replace(".trk", "").replace("__", "").replace("_L", "").replace("_R", ""), bundle]}
-    .groupTuple(by: [0,1])
-    .combine(anat_rbx, by:0)
-    .set{bundles_anat_for_screenshots}
+    bundles = Channel
+        .fromFilePairs("$params.input/**/Clean_Bundles/*.trk",
+                       maxDepth: 2,
+                       size: -1) { it.parent.parent.name }
 
-if (params.run_qc_extractor_mni_extended){
-    Channel
-      .fromPath("$input/final_outputs/**/mni_space/*__*_mni_space.trk", maxDepth:5)
-      .map{["report", it.parent.parent.name, it]}
-      .set{trk_extractor_extended}
+    bundles
+        .flatMap{ sid, bundles -> bundles.collect{ [sid, it] } }
+        .map{sid, bundle -> [sid, bundle.getName().replace(sid, "").replace(".trk", "").replace("__", "").replace("_L", "").replace("_R", ""), bundle]}
+        .groupTuple(by: [0,1])
+        .combine(anat_for_bundles, by:0)
+        .into{bundles_anat_for_screenshots}
+}
+else if (params.run_qc_extractor_mni_extended){
+    anat_for_bundles = Channel
+        .fromFilePairs("$input/final_outputs/**/mni_space/*__t1_mni_space.nii.gz",
+                       maxDepth: 2,
+                       size: 1,
+                       flat: true) { it.parent.parent.name }
 
-    trk_extractor_extended
-      .combine(t1_extractor_extended, by:[0,1])
-      .groupTuple()
-      .map{it -> it[2..-1]}
-      .into{bundles_anat_for_screenshots}
+    bundles = Channel
+        .fromFilePairs("$input/final_outputs/**/mni_space/bundles/*_mni_space.trk",
+                       maxDepth: 5,
+                       size: -1) {it.parent.parent.parent.name}
+    bundles
+      .flatMap{ sid, bundles -> bundles.collect{ [sid, it] } }
+      .map{sid, bundle -> [sid, bundle.getName().replace(sid, "").replace(".trk", "").replace("__", "").replace("_L", "").replace("_R", "").replace("_mni_space", ""), bundle]}
+      .groupTuple(by: [0,1])
+      .combine(anat_for_bundles, by:0)
+      .set{bundles_anat_for_screenshots}
 }
 else if(params.run_qc_extractor_orig_extended){
-    Channel
-      .fromPath("$input/final_outputs/**/orig_space/*__*_orig_space.trk", maxDepth:5)
-      .map{["report", it.parent.parent.name, it]}
-      .set{trk_extractor_extended}
+  anat_for_bundles = Channel
+      .fromFilePairs("$input/final_outputs/**/orig_space/*__t1_orig_space.nii.gz",
+                     maxDepth: 2,
+                     size: 1,
+                     flat: true) { it.parent.parent.name }
 
-    trk_extractor_extended
-      .combine(t1_extractor_extended, by:[0,1])
-      .groupTuple()
-      .map{it -> it[2..-1]}
-      .set{bundles_anat_for_screenshots}
+  bundles = Channel
+      .fromFilePairs("$input/final_outputs/**/orig_space/bundles/*_orig_space.trk",
+                     maxDepth: 5,
+                     size: -1) {it.parent.parent.parent.name}
+
+  bundles
+     .flatMap{ sid, bundles -> bundles.collect{ [sid, it] } }
+     .map{sid, bundle -> [sid, bundle.getName().replace(sid, "").replace(".trk", "").replace("__", "").replace("_L", "").replace("_R", "").replace("_orig_space", ""), bundle]}
+     .groupTuple(by: [0,1])
+     .combine(anat_for_bundles, by:0)
+     .set{bundles_anat_for_screenshots}
 }
 
 process Screenshots_Bundles {
@@ -1032,7 +1097,7 @@ process Screenshots_Bundles {
     set b_name, val("QC"), "${sid}__${b_name}.png" into screenshots_for_report
 
     when:
-        params.run_qc_rbx
+        params.run_qc_rbx || params.run_qc_extractor_extended || params.run_qc_extractor_orig_extended
 
     script:
     """
@@ -1041,7 +1106,7 @@ process Screenshots_Bundles {
     export OPENBLAS_NUM_THREADS=1
 
     mrconvert $anat anat.nii.gz
-    scil_visualize_bundles_mosaic.py anat.nii.gz $bundles ${sid}__${b_name}.png -f --light_screenshot --no_information
+    scil_visualize_bundles_mosaic.py anat.nii.gz $bundles ${sid}__${b_name}.png -f --light_screenshot --no_bundle_name
     """
 }
 
@@ -1109,67 +1174,5 @@ process QC_Bundles {
 
         dmriqc_from_screenshot.py report_extractor_orig_extended.html ${b_names} --sym_link
         """
-    }
-}
-
-extractor_trk_t1 = Channel.empty()
-if (params.run_qc_extractor_mni){
-    Channel
-      .fromPath("$input/final_outputs/**/mni_space/*__plausible_mni_space.trk", maxDepth:5)
-      .map{["report", it.parent.parent.name, it]}
-      .set{trk_extractor}
-
-    Channel
-      .fromPath("$input/final_outputs/**/mni_space/*__t1_mni_space.nii.gz", maxDepth:5)
-      .map{["report", it.parent.parent.name, it]}
-      .into{t1_extractor;t1_extractor_extended}
-
-    trk_extractor
-      .combine(t1_extractor, by:[0,1])
-      .groupTuple()
-      .map{it -> it[2..-1]}
-      .set{extractor_trk_t1}
-}
-else if (params.run_qc_extractor_orig){
-  Channel
-    .fromPath("$input/final_outputs/**/orig_space/*__plausible_orig_space.trk", maxDepth:5)
-    .map{["report", it.parent.parent.name, it]}
-    .set{trk_extractor}
-
-  Channel
-    .fromPath("$input/final_outputs/**/orig_space/*__t1_orig_space.nii.gz", maxDepth:5)
-    .map{["report", it.parent.parent.name, it]}
-    .into{t1_extractor;t1_extractor_extended}
-
-  trk_extractor
-    .combine(t1_extractor, by:[0,1])
-    .groupTuple()
-    .map{it -> it[2..-1]}
-    .set{extractor_trk_t1}
-}
-
-process QC_Extractor_MNI_Tracking {
-    cpus params.tracking_nb_threads
-
-    input:
-      set file(trk), file(t1) from extractor_trk_t1
-
-    output:
-      file("report_tracking_mni.html") optional true
-      file("report_tracking_orig.html") optional true
-
-    when:
-        params.run_qc_extractor
-
-    script:
-    if (params.run_qc_extractor_mni){
-    """
-    dmriqc_tractogram.py report_tracking_mni.html --tractograms $trk --t1s $t1
-    """
-    }
-    else{
-    """
-    dmriqc_tractogram.py report_tracking_orig.html --tractograms $trk --t1s $t1
-    """
     }
 }
