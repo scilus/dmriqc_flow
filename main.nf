@@ -53,19 +53,16 @@ else {
 
 Channel
     .fromPath("$input/**/Segment_*/*mask_wm.nii.gz", maxDepth:3)
-    .map{it}
     .collect(sort:true)
     .into{wm_for_resampled_dwi;wm_for_dti;wm_for_fodf;wm_for_registration}
 
 Channel
     .fromPath("$input/**/Segment_*/*mask_gm.nii.gz", maxDepth:3)
-    .map{it}
     .collect(sort:true)
     .into{gm_for_resampled_dwi;gm_for_dti;gm_for_fodf;gm_for_registration}
 
 Channel
     .fromPath("$input/**/Segment_*/*mask_csf.nii.gz", maxDepth:3)
-    .map{it}
     .collect(sort:true)
     .into{csf_for_resampled_dwi;csf_for_dti;csf_for_fodf;csf_for_registration}
 
@@ -190,7 +187,6 @@ process QC_Denoise_DWI {
 
 Channel
     .fromPath("$input/**/Denoise_T1/*t1_denoised.nii.gz", maxDepth:3)
-    .map{it}
     .collect(sort:true)
     .set{t1_denoised}
 
@@ -223,19 +219,16 @@ process QC_Denoise_T1 {
 
 Channel
     .fromPath("$input/**/Bet_Prelim_DWI/*b0_bet.nii.gz", maxDepth:3)
-    .map{it}
     .collect(sort:true)
     .into{b0_for_eddy_topup;for_counter_eddy_topup}
 
 Channel
     .fromPath("$input/**/Bet_Prelim_DWI/*b0_bet_mask_dilated.nii.gz", maxDepth:3)
-    .map{it}
     .collect(sort:true)
     .set{b0_mask_for_eddy_topup}
 
 Channel
     .fromPath("$input/**/Extract_B0/*b0.nii.gz", maxDepth:3)
-    .map{it}
     .collect(sort:true)
     .set{b0_corrected}
 
@@ -322,7 +315,6 @@ process QC_Resample_DWI {
 
 Channel
     .fromPath("$input/**/Resample_T1/*t1_resampled.nii.gz", maxDepth:3)
-    .map{it}
     .collect(sort:true)
     .set{t1_resampled}
 
@@ -436,7 +428,6 @@ process QC_DTI {
 
 Channel
     .fromPath("$input/**/Compute_FRF/*frf.txt", maxDepth:3)
-    .map{it}
     .collect(sort:true)
     .set{compute_frf}
 
@@ -536,7 +527,6 @@ Channel
 
 Channel
     .fromPath("$input/**/Register_T1/*t1_warped.nii.gz", maxDepth:3)
-    .map{it}
     .collect(sort:true)
     .set{t1_warped_for_registration}
 
@@ -573,12 +563,12 @@ process QC_Tracking {
 
 Channel
     .fromPath("$input/**/Segment_Tissues/*map_wm.nii.gz", maxDepth:3)
-    .map{it}
+    .collect(sort:true)
     .set{wm_maps}
 
 Channel
     .fromPath("$input/**/Segment_Freesurfer/*mask_wm.nii.gz", maxDepth:3)
-    .map{it}
+    .collect(sort:true)
     .set{wm_masks}
 
 wm_maps
@@ -588,12 +578,12 @@ wm_maps
 
 Channel
     .fromPath("$input/**/Segment_Tissues/*map_gm.nii.gz", maxDepth:3)
-    .map{it}
+    .collect(sort:true)
     .set{gm_maps}
 
 Channel
     .fromPath("$input/**/Segment_Freesurfer/*mask_gm.nii.gz", maxDepth:3)
-    .map{it}
+    .collect(sort:true)
     .set{gm_masks}
 
 gm_maps
@@ -603,12 +593,12 @@ gm_maps
 
 Channel
     .fromPath("$input/**/Segment_Tissues/*map_csf.nii.gz", maxDepth:3)
-    .map{it}
+    .collect(sort:true)
     .set{csf_maps}
 
 Channel
     .fromPath("$input/**/Segment_Freesurfer/*mask_csf.nii.gz", maxDepth:3)
-    .map{it}
+    .collect(sort:true)
     .set{csf_masks}
 
 csf_maps
@@ -647,19 +637,16 @@ process QC_Segment_Tissues {
 
 Channel
     .fromPath("$input/**/PFT_Seeding_Mask/*seeding_mask.nii.gz", maxDepth:3)
-    .map{it}
     .collect(sort:true)
     .set{seeding}
 
 Channel
     .fromPath("$input/**/PFT_Tracking_Maps/*map_include.nii.gz", maxDepth:3)
-    .map{it}
     .collect(sort:true)
     .set{include}
 
 Channel
     .fromPath("$input/**/PFT_Tracking_Maps/*map_exclude.nii.gz", maxDepth:3)
-    .map{it}
     .collect(sort:true)
     .set{exclude}
 
@@ -695,7 +682,6 @@ process QC_PFT_Maps {
 
 Channel
     .fromPath("$input/**/Local_Tracking_Mask/*tracking_mask.nii.gz", maxDepth:3)
-    .map{it}
     .collect(sort:true)
     .set{mask}
 
@@ -728,7 +714,6 @@ process QC_Local_Tracking_Mask {
 
 Channel
     .fromPath("$input/**/Local_Seeding_Mask/*seeding_mask.nii.gz", maxDepth:3)
-    .map{it}
     .collect(sort:true)
     .set{seeding}
 
@@ -761,7 +746,6 @@ process QC_Local_Seeding_Mask {
 
 Channel
     .fromPath("$input/**/DTI_Metrics/*rgb.nii.gz", maxDepth:3)
-    .map{it}
     .collect(sort:true)
     .set{rgb}
 
@@ -799,12 +783,12 @@ process QC_Register_T1 {
 
 Channel
     .fromPath("$input/**/*bval", maxDepth:1)
-    .map{it}
+    .collect(sort:true)
     .set{all_raw_bval}
 
 Channel
     .fromPath("$input/sub-*/**/*dwi.bval", maxDepth:4)
-    .map{it}
+    .collect(sort:true)
     .set{all_bids_bval}
 
 all_raw_bval
@@ -814,12 +798,12 @@ all_raw_bval
 
 Channel
     .fromPath("$input/**/*bvec", maxDepth:1)
-    .map{it}
+    .collect(sort:true)
     .set{all_raw_bvec}
 
 Channel
     .fromPath("$input/sub-*/**/*dwi.bvec", maxDepth:4)
-    .map{it}
+    .collect(sort:true)
     .set{all_bids_bvec}
 
 all_raw_bvec
@@ -856,12 +840,12 @@ process QC_DWI_Protocol {
 
 Channel
     .fromPath("$input/**/*t1.nii.gz", maxDepth:2)
-    .map{it}
+    .collect(sort:true)
     .set{all_raw_t1}
 
 Channel
     .fromPath("$input/sub-*/**/*T1w.nii.gz", maxDepth:4)
-    .map{it}
+    .collect(sort:true)
     .set{all_bids_t1}
 
 all_raw_t1
@@ -898,12 +882,12 @@ process QC_Raw_T1 {
 
 Channel
     .fromPath("$input/**/*dwi.nii.gz", maxDepth:1)
-    .map{it}
+    .collect(sort:true)
     .set{all_raw_dwi}
 
 Channel
     .fromPath("$input/sub-*/**/*dwi.nii.gz", maxDepth:4)
-    .map{it}
+    .collect(sort:true)
     .set{all_bids_dwi}
 
 all_raw_dwi
