@@ -58,52 +58,38 @@ else {
 
 Channel
     .fromPath("$input/**/Segment_*/*mask_wm.nii.gz", maxDepth:3)
-    .map{it}
-    .toSortedList()
+    .collect(sort:true)
     .into{wm_for_resampled_dwi;wm_for_dti;wm_for_fodf;wm_for_registration}
 
 Channel
     .fromPath("$input/**/Segment_*/*mask_gm.nii.gz", maxDepth:3)
-    .map{it}
-    .toSortedList()
+    .collect(sort:true)
     .into{gm_for_resampled_dwi;gm_for_dti;gm_for_fodf;gm_for_registration}
 
 Channel
     .fromPath("$input/**/Segment_*/*mask_csf.nii.gz", maxDepth:3)
-    .map{it}
-    .toSortedList()
+    .collect(sort:true)
     .into{csf_for_resampled_dwi;csf_for_dti;csf_for_fodf;csf_for_registration}
 
 Channel
     .fromPath("$input/**/Bet_DWI/*b0_bet_mask.nii.gz", maxDepth:3)
-    .map{it}
-    .toSortedList()
+    .collect(sort:true)
+    .map{[it]}
     .set{b0_bet_mask_for_bet}
 
 Channel
-    .fromPath("$input/**/Eddy/*dwi_corrected.nii.gz", maxDepth:3)
-    .map{it}
-    .toSortedList()
+    .fromPath("$input/**/**/*dwi_corrected.nii.gz", maxDepth:3)
+    .collect(sort:true)
+    .map{[it]}
     .set{dwi_eddy_for_bet}
 
-Channel
-    .fromPath("$input/**/Eddy_Topup/*dwi_corrected.nii.gz", maxDepth:3)
-    .map{it}
-    .toSortedList()
-    .set{dwi_eddy_topup_for_bet}
-
-dwi_eddy_for_bet
-    .concat(dwi_eddy_topup_for_bet)
-    .flatten()
-    .toList()
-    .set{dwi_for_bet}
+dwi_eddy_for_bet.combine(b0_bet_mask_for_bet).set{dwi_mask_for_bet}
 
 process QC_Brain_Extraction_DWI {
     cpus params.bet_dwi_nb_threads
 
     input:
-    file(mask) from b0_bet_mask_for_bet
-    file(dwi) from dwi_for_bet
+    tuple file(dwi), file(mask) from dwi_mask_for_bet
 
     output:
     file "report_dwi_bet.html"
@@ -129,22 +115,25 @@ process QC_Brain_Extraction_DWI {
 
 Channel
     .fromPath("$input/**/Bet_T1/*t1_bet_mask.nii.gz", maxDepth:3)
-    .map{it}
-    .toSortedList()
+    .collect(sort:true)
+    .collect()
+    .map{[it]}
     .set{t1_bet_mask_for_bet}
 
 Channel
     .fromPath("$input/**/Resample_T1/*t1_resampled.nii.gz", maxDepth:3)
-    .map{it}
-    .toSortedList()
+    .collect(sort:true)
+    .collect()
+    .map{[it]}
     .set{t1_for_bet}
+
+t1_for_bet.combine(t1_bet_mask_for_bet).set{t1_mask_for_bet}
 
 process QC_Brain_Extraction_T1 {
     cpus params.bet_t1_nb_threads
 
     input:
-    file(mask) from t1_bet_mask_for_bet
-    file(t1) from t1_for_bet
+    tuple file(t1), file(mask) from t1_mask_for_bet
 
     output:
     file "report_t1_bet.html"
@@ -170,8 +159,8 @@ process QC_Brain_Extraction_T1 {
 
 Channel
     .fromPath("$input/**/Denoise_DWI/*dwi_denoised.nii.gz", maxDepth:3)
-    .map{it}
-    .toSortedList()
+    .collect(sort:true)
+    .collect()
     .set{dwi_denoised}
 
 process QC_Denoise_DWI {
@@ -203,8 +192,7 @@ process QC_Denoise_DWI {
 
 Channel
     .fromPath("$input/**/Denoise_T1/*t1_denoised.nii.gz", maxDepth:3)
-    .map{it}
-    .toSortedList()
+    .collect(sort:true)
     .set{t1_denoised}
 
 process QC_Denoise_T1 {
@@ -236,38 +224,18 @@ process QC_Denoise_T1 {
 
 Channel
     .fromPath("$input/**/Bet_Prelim_DWI/*b0_bet.nii.gz", maxDepth:3)
-    .map{it}
-    .toSortedList()
+    .collect(sort:true)
     .into{b0_for_eddy_topup;for_counter_eddy_topup}
 
 Channel
     .fromPath("$input/**/Bet_Prelim_DWI/*b0_bet_mask_dilated.nii.gz", maxDepth:3)
-    .map{it}
-    .toSortedList()
+    .collect(sort:true)
     .set{b0_mask_for_eddy_topup}
-
-for_counter_eddy_topup
-    .flatten()
-    .count()
-    .set{counter_b0}
 
 Channel
     .fromPath("$input/**/Extract_B0/*b0.nii.gz", maxDepth:3)
-    .map{it}
-    .toSortedList()
+    .collect(sort:true)
     .set{b0_corrected}
-
-Channel
-    .fromPath("$input/**/Eddy_Topup/*dwi_corrected.nii.gz", maxDepth:3)
-    .map{it}
-    .count()
-    .set{eddy_topup_counter}
-
-Channel
-    .fromPath("$input/**/Eddy/*dwi_corrected.nii.gz", maxDepth:3)
-    .map{it}
-    .count()
-    .set{eddy_counter}
 
 process QC_Eddy_Topup {
     cpus params.eddy_topup_nb_threads
@@ -276,9 +244,6 @@ process QC_Eddy_Topup {
     file(b0) from b0_for_eddy_topup
     file(b0_corrected) from b0_corrected
     file(mask) from b0_mask_for_eddy_topup
-    val(counter_b0_before) from counter_b0
-    val(counter_b0_eddy_topup) from eddy_topup_counter
-    val(counter_b0_eddy) from eddy_counter
 
     output:
     file "report_eddy_topup.html"
@@ -286,7 +251,7 @@ process QC_Eddy_Topup {
     file "libs"
 
     when:
-    (counter_b0_before == counter_b0_eddy_topup || counter_b0_before == counter_b0_eddy) && params.run_qc_eddy_topup
+    params.run_qc_eddy_topup
 
     script:
     """
@@ -320,8 +285,7 @@ process QC_Eddy_Topup {
 
 Channel
     .fromPath("$input/**/Resample_B0/*b0_resampled.nii.gz", maxDepth:3)
-    .map{it}
-    .toSortedList()
+    .collect(sort:true)
     .set{b0_resampled}
 
 process QC_Resample_DWI {
@@ -356,8 +320,7 @@ process QC_Resample_DWI {
 
 Channel
     .fromPath("$input/**/Resample_T1/*t1_resampled.nii.gz", maxDepth:3)
-    .map{it}
-    .toSortedList()
+    .collect(sort:true)
     .set{t1_resampled}
 
 process QC_Resample_T1 {
@@ -404,27 +367,27 @@ dti_metrics = Channel
 
 fa
     .flatten()
-    .toSortedList()
+    .collect(sort:true)
     .set{fa_for_dti_qa}
 md
     .flatten()
-    .toSortedList()
+    .collect(sort:true)
     .set{md_for_dti_qa}
 rd
     .flatten()
-    .toSortedList()
+    .collect(sort:true)
     .set{rd_for_dti_qa}
 ad
     .flatten()
-    .toSortedList()
+    .collect(sort:true)
     .set{ad_for_dti_qa}
 residual
     .flatten()
-    .toSortedList()
+    .collect(sort:true)
     .set{residual_for_dti_qa}
 evecs
     .flatten()
-    .toSortedList()
+    .collect(sort:true)
     .set{evecs_for_dti_qa}
 
 process QC_DTI {
@@ -470,8 +433,7 @@ process QC_DTI {
 
 Channel
     .fromPath("$input/**/Compute_FRF/*frf.txt", maxDepth:3)
-    .map{it}
-    .toSortedList()
+    .collect(sort:true)
     .set{compute_frf}
 
 process QC_FRF {
@@ -511,19 +473,19 @@ fodf_metrics = Channel
 
 afd_max
     .flatten()
-    .toSortedList()
+    .collect(sort:true)
     .set{afd_max_for_fodf_qa}
 afd_sum
     .flatten()
-    .toSortedList()
+    .collect(sort:true)
     .set{afd_sum_for_fodf_qa}
 afd_total
     .flatten()
-    .toSortedList()
+    .collect(sort:true)
     .set{afd_total_for_fodf_qa}
 nufo
     .flatten()
-    .toSortedList()
+    .collect(sort:true)
     .set{nufo_for_fodf_qa}
 
 process QC_FODF {
@@ -566,8 +528,7 @@ process QC_FODF {
 
 Channel
     .fromPath("$input/**/Register_T1/*t1_warped.nii.gz", maxDepth:3)
-    .map{it}
-    .toSortedList()
+    .collect(sort:true)
     .set{t1_warped_for_registration}
 
 
@@ -660,47 +621,47 @@ process QC_Tracking {
 
 Channel
     .fromPath("$input/**/Segment_Tissues/*map_wm.nii.gz", maxDepth:3)
-    .map{it}
+    .collect(sort:true)
     .set{wm_maps}
 
 Channel
     .fromPath("$input/**/Segment_Freesurfer/*mask_wm.nii.gz", maxDepth:3)
-    .map{it}
+    .collect(sort:true)
     .set{wm_masks}
 
 wm_maps
   .mix(wm_masks)
-  .toSortedList()
+  .collect(sort:true)
   .set{wm_for_seg}
 
 Channel
     .fromPath("$input/**/Segment_Tissues/*map_gm.nii.gz", maxDepth:3)
-    .map{it}
+    .collect(sort:true)
     .set{gm_maps}
 
 Channel
     .fromPath("$input/**/Segment_Freesurfer/*mask_gm.nii.gz", maxDepth:3)
-    .map{it}
+    .collect(sort:true)
     .set{gm_masks}
 
 gm_maps
   .mix(gm_masks)
-  .toSortedList()
+  .collect(sort:true)
   .set{gm_for_seg}
 
 Channel
     .fromPath("$input/**/Segment_Tissues/*map_csf.nii.gz", maxDepth:3)
-    .map{it}
+    .collect(sort:true)
     .set{csf_maps}
 
 Channel
     .fromPath("$input/**/Segment_Freesurfer/*mask_csf.nii.gz", maxDepth:3)
-    .map{it}
+    .collect(sort:true)
     .set{csf_masks}
 
 csf_maps
   .mix(csf_masks)
-  .toSortedList()
+  .collect(sort:true)
   .set{csf_for_seg}
 
 process QC_Segment_Tissues {
@@ -734,20 +695,17 @@ process QC_Segment_Tissues {
 
 Channel
     .fromPath("$input/**/PFT_Seeding_Mask/*seeding_mask.nii.gz", maxDepth:3)
-    .map{it}
-    .toSortedList()
+    .collect(sort:true)
     .set{seeding}
 
 Channel
     .fromPath("$input/**/PFT_Tracking_Maps/*map_include.nii.gz", maxDepth:3)
-    .map{it}
-    .toSortedList()
+    .collect(sort:true)
     .set{include}
 
 Channel
     .fromPath("$input/**/PFT_Tracking_Maps/*map_exclude.nii.gz", maxDepth:3)
-    .map{it}
-    .toSortedList()
+    .collect(sort:true)
     .set{exclude}
 
 process QC_PFT_Maps {
@@ -782,8 +740,7 @@ process QC_PFT_Maps {
 
 Channel
     .fromPath("$input/**/Local_Tracking_Mask/*tracking_mask.nii.gz", maxDepth:3)
-    .map{it}
-    .toSortedList()
+    .collect(sort:true)
     .set{mask}
 
 process QC_Local_Tracking_Mask {
@@ -815,8 +772,7 @@ process QC_Local_Tracking_Mask {
 
 Channel
     .fromPath("$input/**/Local_Seeding_Mask/*seeding_mask.nii.gz", maxDepth:3)
-    .map{it}
-    .toSortedList()
+    .collect(sort:true)
     .set{seeding}
 
 process QC_Local_Seeding_Mask {
@@ -846,11 +802,9 @@ process QC_Local_Seeding_Mask {
     """
 }
 
-
 Channel
     .fromPath("$input/**/DTI_Metrics/*rgb.nii.gz", maxDepth:3)
-    .map{it}
-    .toSortedList()
+    .collect(sort:true)
     .set{rgb}
 
 process QC_Register_T1 {
@@ -887,32 +841,32 @@ process QC_Register_T1 {
 
 Channel
     .fromPath("$input/**/*bval", maxDepth:1)
-    .map{it}
+    .collect(sort:true)
     .set{all_raw_bval}
 
 Channel
     .fromPath("$input/sub-*/**/*dwi.bval", maxDepth:4)
-    .map{it}
+    .collect(sort:true)
     .set{all_bids_bval}
 
 all_raw_bval
   .mix(all_bids_bval)
-  .toSortedList()
+  .collect(sort:true)
   .set{all_bval}
 
 Channel
     .fromPath("$input/**/*bvec", maxDepth:1)
-    .map{it}
+    .collect(sort:true)
     .set{all_raw_bvec}
 
 Channel
     .fromPath("$input/sub-*/**/*dwi.bvec", maxDepth:4)
-    .map{it}
+    .collect(sort:true)
     .set{all_bids_bvec}
 
 all_raw_bvec
   .mix(all_bids_bvec)
-  .toSortedList()
+  .collect(sort:true)
   .set{all_bvec}
 
 
@@ -944,17 +898,17 @@ process QC_DWI_Protocol {
 
 Channel
     .fromPath("$input/**/*t1.nii.gz", maxDepth:2)
-    .map{it}
+    .collect(sort:true)
     .set{all_raw_t1}
 
 Channel
     .fromPath("$input/sub-*/**/*T1w.nii.gz", maxDepth:4)
-    .map{it}
+    .collect(sort:true)
     .set{all_bids_t1}
 
 all_raw_t1
   .mix(all_bids_t1)
-  .toSortedList()
+  .collect(sort:true)
   .set{all_t1}
 
 process QC_Raw_T1 {
@@ -986,17 +940,17 @@ process QC_Raw_T1 {
 
 Channel
     .fromPath("$input/**/*dwi.nii.gz", maxDepth:1)
-    .map{it}
+    .collect(sort:true)
     .set{all_raw_dwi}
 
 Channel
     .fromPath("$input/sub-*/**/*dwi.nii.gz", maxDepth:4)
-    .map{it}
+    .collect(sort:true)
     .set{all_bids_dwi}
 
 all_raw_dwi
   .mix(all_bids_dwi)
-  .toSortedList()
+  .collect(sort:true)
   .set{all_dwi}
 
 process QC_Raw_DWI {
