@@ -73,7 +73,7 @@ Channel
     .set{b0_bet_mask_for_bet}
 
 Channel
-    .fromPath("$input/**/**/*dwi_corrected.nii.gz", maxDepth:3)
+    .fromPath(["$input/**/Eddy/*dwi_corrected.nii.gz", "$input/**/Eddy_Topup/*dwi_corrected.nii.gz"], maxDepth:3)
     .collect(sort:true)
     .map{[it]}
     .set{dwi_eddy_for_bet}
