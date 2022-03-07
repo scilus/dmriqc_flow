@@ -111,14 +111,12 @@ process QC_Brain_Extraction_DWI {
 Channel
     .fromPath("$input/**/Bet_T1/*t1_bet_mask.nii.gz", maxDepth:3)
     .collect(sort:true)
-    .collect()
     .map{[it]}
     .set{t1_bet_mask_for_bet}
 
 Channel
     .fromPath("$input/**/Resample_T1/*t1_resampled.nii.gz", maxDepth:3)
     .collect(sort:true)
-    .collect()
     .map{[it]}
     .set{t1_for_bet}
 
@@ -155,7 +153,6 @@ process QC_Brain_Extraction_T1 {
 Channel
     .fromPath("$input/**/Denoise_DWI/*dwi_denoised.nii.gz", maxDepth:3)
     .collect(sort:true)
-    .collect()
     .set{dwi_denoised}
 
 process QC_Denoise_DWI {
@@ -220,7 +217,7 @@ process QC_Denoise_T1 {
 Channel
     .fromPath("$input/**/Bet_Prelim_DWI/*b0_bet.nii.gz", maxDepth:3)
     .collect(sort:true)
-    .into{b0_for_eddy_topup;for_counter_eddy_topup}
+    .into{b0_for_eddy_topup;for_counter_b0}
 
 Channel
     .fromPath("$input/**/Bet_Prelim_DWI/*b0_bet_mask_dilated.nii.gz", maxDepth:3)
@@ -230,7 +227,17 @@ Channel
 Channel
     .fromPath("$input/**/Extract_B0/*b0.nii.gz", maxDepth:3)
     .collect(sort:true)
-    .set{b0_corrected}
+    .into{b0_corrected;for_counter_b0_corrected}
+
+for_counter_b0
+    .flatten()
+    .count()
+    .set{counter_b0}
+
+for_counter_b0_corrected
+    .flatten()
+    .count()
+    .set{counter_b0_eddy}
 
 process QC_Eddy_Topup {
     cpus params.eddy_topup_nb_threads
@@ -239,6 +246,8 @@ process QC_Eddy_Topup {
     file(b0) from b0_for_eddy_topup
     file(b0_corrected) from b0_corrected
     file(mask) from b0_mask_for_eddy_topup
+    val(counter_b0_before) from counter_b0
+    val(counter_b0_corrected) from counter_b0_eddy
 
     output:
     file "report_eddy_topup.html"
@@ -246,7 +255,7 @@ process QC_Eddy_Topup {
     file "libs"
 
     when:
-    params.run_qc_eddy_topup
+    (counter_b0_before == counter_b0_corrected) && params.run_qc_eddy_topup
 
     script:
     """
