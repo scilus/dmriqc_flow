@@ -5,22 +5,19 @@ Run human pipeline
 
 USAGE
 
-nextflow run main.nf [OPTIONAL_ARGUMENTS] (--input)
+nextflow run main.nf (--input) (-profile)
 
 DESCRIPTION
 
-    --input=/path/to/[root]             Input folder containing multiple subjects
-                                        TractoFlow input (bids structure or not)
-                                        or TractoFlow results folder
-                                        All the files must contain subject id prefix or follow BIDS structure.
-                                        (e.g. subj1__t1.nii.gz, subj1__bval, subj1_bvec)
+    --input=/path/to/[root]             Input folder containing tractoflow input (bids structure or not)
+                                        or TractoFlow or RBX results folder.
 
     --output_dir                        Directory where to write the final results.
-                                        By default, will be in "./results_QC"
+                                        By default, will be in "./results_QC".
 
     PROFILES (using -profile option (e.g. -profile tractoflow_qc_light,cbrain))
 
-    input_qc                            Create QC reports for your raw data (Can be a BIDS structure)
+    input_qc                            Create QC reports for your raw data (Can be a BIDS structure).
 
     tractoflow_qc_light                 Create QC reports for your TractoFlow results:
                                         Output important steps only.
@@ -28,11 +25,10 @@ DESCRIPTION
     tractoflow_qc_all                   Create QC reports for your TractoFlow results:
                                         Output all steps.
 
+    rbx_qc                              Create QC reports for your rbx-flow results.
+
     cbrain                              When this profile is used, Nextflow will copy all the output files in publishDir and not use symlinks.
-                                        cbrain profile should be used as a second profile (e.g -profile input_qc,cbrain)
-
-    rbx_qc                              Create QC reports for your rbx-flow results
-
+                                        cbrain profile should be used as a second profile (e.g -profile input_qc,cbrain).
 
 Files should be compressed Nifti files (.nii.gz)
 
