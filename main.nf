@@ -6,10 +6,9 @@ params.help = false
 
 if(params.help) {
     usage = file("$baseDir/USAGE")
-
+    bindings = ["dicom_fields":"$params.dicom_fields"]
     engine = new groovy.text.SimpleTemplateEngine()
-    template = engine.createTemplate(usage.text).make()
-
+    template = engine.createTemplate(usage.text).make(bindings)
     print template.toString()
     return
 }
@@ -806,6 +805,12 @@ all_raw_bval
   .set{all_bval}
 
 Channel
+  .fromPath("$input/sub-*/**/*dwi.json", maxDepth:4)
+  .map{it}
+  .toSortedList()
+  .set{all_json}
+
+Channel
     .fromPath("$input/**/*bvec", maxDepth:1)
     .collect(sort:true)
     .set{all_raw_bvec}
@@ -827,6 +832,7 @@ process QC_DWI_Protocol {
     input:
     file(bval) from all_bval
     file(bvec) from all_bvec
+    file(json) from all_json
 
     output:
     file "report_dwi_protocol.html"
@@ -837,12 +843,15 @@ process QC_DWI_Protocol {
         params.run_qc_dwi_protocol
 
     script:
+    def metadata = json.name != [] ? "--metadata $json" : ''
     """
     export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
     export OMP_NUM_THREADS=1
     export OPENBLAS_NUM_THREADS=1
     dmriqc_dwi_protocol.py report_dwi_protocol.html\
     --bval $bval --bvec $bvec\
+    $metadata\
+    --dicom_fields $params.dicom_fields\
     --tol $params.dwi_protocol_tol
     """
 }
