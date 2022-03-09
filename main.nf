@@ -808,6 +808,17 @@ Channel
   .fromPath("$input/sub-*/**/*dwi.json", maxDepth:4)
   .map{it}
   .toSortedList()
+  .set{all_bids_json}
+
+Channel
+  .fromPath("$input/**/*dwi.json", maxDepth:1)
+  .map{it}
+  .toSortedList()
+  .set{all_raw_json}
+
+all_raw_json
+  .mix(all_bids_json)
+  .collect(sort:true)
   .set{all_json}
 
 Channel

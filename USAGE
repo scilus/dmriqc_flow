@@ -29,7 +29,7 @@ PROFILES (using -profile option (e.g. -profile tractoflow_qc_light,cbrain))
 
 OPTIONAL ARGUMENTS (current value)
 
-    --dicom_fields                      All dicom fields extracted to QC the DWI protocol - Works only with profile input_qc and a BIDS structure (--dicom_fields "$dicom_fields").
+    --dicom_fields                      All dicom fields extracted to QC the DWI protocol - Works only with profile input_qc (--dicom_fields "$dicom_fields").
 
     --output_dir                        Directory where to write the final results.
                                         By default, will be in "./results_QC".
