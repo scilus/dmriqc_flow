@@ -1013,7 +1013,7 @@ Channel.fromPath("$input/**/Register_T1/*space.nii.gz", maxDepth:4)
     .set{t1_registered}
 
 Channel
-    .fromPath("$input/atlas_t1.nii.gz")
+    .fromPath("$input/*_atlas.nii.gz")
     .set{template_for_qc}
 
 process QC_Register_to_Template {
@@ -1054,3 +1054,39 @@ process QC_Register_to_Template {
     --duration $params.eddy_topup_duration
     """
 }
+
+Channel.fromPath("$input/**/**/Compute_Connectivity/Connectivity_w_lesion/*lesion_sc_matrix.png", maxDepth:6)
+    .map{[it.parent.parent.parent.parent.name, it.parent.parent.parent.name, it]}
+    .groupTuple(by:0)
+    .into{lesion_png;toto}
+
+toto.println()
+
+process QC_Matrices {
+    cpus 1
+
+    input:
+    set sid, id_tractograms, file(png) from lesion_png
+
+    output:
+    file "report_rbx.html"
+    file "data"
+    file "libs"
+
+    when:
+        params.run_qc_matrices
+
+    script:
+    """
+    export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
+    export OMP_NUM_THREADS=1
+    export OPENBLAS_NUM_THREADS=1
+    for i in ${sid};
+    do
+        echo \${i}
+        mkdir -p \${i}
+        mv *\${i}*.png \${i}/
+    done
+    dmriqc_from_screenshot.py report_rbx.html ${sid} --sym_link
+    """
+    }
