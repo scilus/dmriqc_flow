@@ -36,7 +36,7 @@ for (String item : theArr) {
    profiles.add(item);
 }
 
-if (profiles.get(0) != "input_qc" && profiles.get(0) != "tractoflow_qc_light" && profiles.get(0) != "tractoflow_qc_all" && profiles.get(0) != "rbx_qc")
+if (profiles.get(0) != "input_qc" && profiles.get(0) != "tractoflow_qc_light" && profiles.get(0) != "tractoflow_qc_all" && profiles.get(0) != "rbx_qc" && profiles.get(0) != "disconects_qc")
 {
     error "Error ~ Please select a profile (-profile): input_qc, tractoflow_qc_light, tractoflow_qc_all or rbx_qc."
 }
@@ -1005,5 +1005,52 @@ process QC_RBx {
         mv *\${i}.png \${i}
     done
     dmriqc_from_screenshot.py report_rbx.html ${b_names} --sym_link
+    """
+}
+
+Channel.fromPath("$input/**/Register_T1/*space.nii.gz", maxDepth:4)
+    .collect(sort:true)
+    .set{t1_registered}
+
+Channel
+    .fromPath("$input/atlas_t1.nii.gz")
+    .set{template_for_qc}
+
+process QC_Register_to_Template {
+    cpus params.eddy_topup_nb_threads
+
+    input:
+    file(t1) from t1_registered
+    file(template) from template_for_qc
+
+    output:
+    file "report_register_to_template.html"
+    file "data"
+    file "libs"
+
+    when:
+    params.run_t1_register_to_template
+
+    script:
+    """
+    export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
+    export OMP_NUM_THREADS=1
+    export OPENBLAS_NUM_THREADS=1
+
+    for i in $t1
+    do
+        echo \$i >> t1.txt
+    done
+    paste t1.txt | while read a; do filename=\$(basename -- "\$a");\
+    filename="\${filename%.*.*}";
+    mrhistmatch scale $t1 ${template} \${filename}_hist_matched.nii.gz
+    mrcat $template \${filename}_hist_matched.nii.gz \${filename}_template_t1.nii.gz -debug; done
+
+    dmriqc_generic.py "Register to template" report_register_to_template.html\
+    --images *_template_t1.nii.gz\
+    --skip $params.eddy_topup_skip\
+    --nb_threads $params.eddy_topup_nb_threads\
+    --nb_columns $params.eddy_topup_nb_columns\
+    --duration $params.eddy_topup_duration
     """
 }
