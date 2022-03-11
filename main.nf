@@ -1056,15 +1056,16 @@ process QC_Register_to_Template {
 }
 
 Channel.fromPath("$input/**/**/Compute_Connectivity/Connectivity_w_lesion/*lesion_sc_matrix.png", maxDepth:6)
-    .map{[it.parent.parent.parent.parent.name, it.parent.parent.parent.name, it]}
-    .groupTuple(by:0)
-    .into{lesion_png}
+    .collect(sort: true)
+    .map{[it.parent.parent.parent.parent.name, it]}
+    .map{sid, png -> [sid.unique().join(",").replaceAll(",", " "), png].toList()}
+    .set{lesion_png}
 
 process QC_Matrices {
     cpus 1
 
     input:
-    set sid, id_tractograms, file(png) from lesion_png
+    set sid, file(png) from lesion_png
 
     output:
     file "report_rbx.html"
