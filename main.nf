@@ -1010,18 +1010,23 @@ process QC_RBx {
 
 Channel.fromPath("$input/**/Register_T1/*space.nii.gz", maxDepth:4)
     .collect(sort:true)
-    .set{t1_registered}
+    .into{t1_registered;toto}
+
+toto.println()
 
 Channel
-    .fromPath("$input/*_atlas.nii.gz")
-    .set{template_for_qc}
+    .fromPath("$input/*_labels.nii.gz")
+    .collect()
+    .into{labels_for_qc;truc}
+
+truc.println()
 
 process QC_Register_to_Template {
     cpus params.eddy_topup_nb_threads
 
     input:
-    file(t1) from t1_registered
-    file(template) from template_for_qc
+    file(t1s) from t1_registered
+    file(template) from labels_for_qc
 
     output:
     file "report_register_to_template.html"
@@ -1037,22 +1042,51 @@ process QC_Register_to_Template {
     export OMP_NUM_THREADS=1
     export OPENBLAS_NUM_THREADS=1
 
-    for i in $t1
-    do
-        echo \$i >> t1.txt
-    done
-    paste t1.txt | while read a; do filename=\$(basename -- "\$a");\
-    filename="\${filename%.*.*}";
-    mrhistmatch scale $t1 ${template} \${filename}_hist_matched.nii.gz
-    mrcat $template \${filename}_hist_matched.nii.gz \${filename}_template_t1.nii.gz -debug; done
-
-    dmriqc_generic.py "Register to template" report_register_to_template.html\
-    --images *_template_t1.nii.gz\
+    dmriqc_labels.py report_register_to_template.html\
+    --t1 ${t1s}\
+    --label ${template} \
     --skip $params.eddy_topup_skip\
     --nb_threads $params.eddy_topup_nb_threads\
     --nb_columns $params.eddy_topup_nb_columns\
-    --duration $params.eddy_topup_duration
+    --compute_lut
     """
+}
+
+Channel.fromPath("$input/**/**/Compute_Connectivity/Connectivity_w_lesion/*lesion_sc.npy",
+    maxDepth:6)
+    .map{[it.parent.parent.parent.parent.name, it.parent.parent.parent.name, it]}
+    .set{matrice_lesion_for_combine}
+
+Channel.fromPath("$input/**/**/Compute_Connectivity/*atlas_sc.npy",
+    maxDepth:5)
+    .map{[it.parent.parent.parent.name, it.parent.parent.name, it]}
+    .set{matrice_atlas_for_combine}
+
+matrice_atlas_for_combine.join(matrice_lesion_for_combine, by: [0,1])
+    .set{matrice_for_create_csv}
+
+Channel.fromPath("$input/*labels.txt")
+    .set{labels}
+
+matrice_for_create_csv.combine(labels)
+    .set{matrices_labels_for_create_csv}
+
+process Create_disconects_csv {
+    cpus 1
+    input:
+    set sid, tid, file(before_mat), file(after_mat), file(label_atlas) from matrices_labels_for_create_csv
+
+    output:
+    file("${sid}_${tid}_sc_ratio.csv") into stats_to_be_collected
+
+    script:
+
+    before_m="${before_mat}"
+    after_m="${after_mat}"
+    labels="${label_atlas}"
+    output_file="${sid}_${tid}_sc_ratio.csv"
+
+    template "disconects_qc_analysis.py"
 }
 
 Channel.fromPath("$input/**/**/Compute_Connectivity/Connectivity_w_lesion/*lesion_sc_matrix.png", maxDepth:6)
@@ -1061,11 +1095,17 @@ Channel.fromPath("$input/**/**/Compute_Connectivity/Connectivity_w_lesion/*lesio
     .map{sid, png -> [sid.unique().join(",").replaceAll(",", " "), png].toList()}
     .set{lesion_png}
 
+
+stats_to_be_collected
+  .collect()
+  .set{stats_for_matrix}
+
 process QC_Matrices {
     cpus 1
 
     input:
     set sid, file(png) from lesion_png
+    file(stats) from stats_for_matrix
 
     output:
     file "report_rbx.html"
@@ -1073,19 +1113,20 @@ process QC_Matrices {
     file "libs"
 
     when:
-        params.run_qc_matrices
+    params.run_qc_matrices
 
     script:
     """
     export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
     export OMP_NUM_THREADS=1
     export OPENBLAS_NUM_THREADS=1
+    ls -al
     for i in ${sid};
     do
-        echo \${i}
-        mkdir -p \${i}
-        mv *\${i}*.png \${i}/
+      echo \${i}
+      mkdir -p \${i}
+      mv \${i}*.* \${i}/
     done
-    dmriqc_from_screenshot.py report_rbx.html ${sid} --sym_link
+    dmriqc_from_screenshot.py report_rbx.html --data ${sid} --stats --sym_link
     """
-    }
+}
