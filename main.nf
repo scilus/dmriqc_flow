@@ -1010,16 +1010,12 @@ process QC_RBx {
 
 Channel.fromPath("$input/**/Register_T1/*space.nii.gz", maxDepth:4)
     .collect(sort:true)
-    .into{t1_registered;toto}
-
-toto.println()
+    .set{t1_registered}
 
 Channel
     .fromPath("$input/*_labels.nii.gz")
     .collect()
-    .into{labels_for_qc;truc}
-
-truc.println()
+    .set{labels_for_qc}
 
 process QC_Register_to_Template {
     cpus params.eddy_topup_nb_threads
@@ -1100,7 +1096,7 @@ stats_to_be_collected
   .collect()
   .set{stats_for_matrix}
 
-process QC_Matrices {
+process QC_SC_Matrices {
     cpus 1
 
     input:
@@ -1108,7 +1104,7 @@ process QC_Matrices {
     file(stats) from stats_for_matrix
 
     output:
-    file "report_rbx.html"
+    file "report_sc_matrices.html"
     file "data"
     file "libs"
 
@@ -1127,6 +1123,6 @@ process QC_Matrices {
       mkdir -p \${i}
       mv \${i}*.* \${i}/
     done
-    dmriqc_from_screenshot.py report_rbx.html --data ${sid} --stats --sym_link
+    dmriqc_from_screenshot.py report_sc_matrices.html --data ${sid} --stats --sym_link
     """
 }
