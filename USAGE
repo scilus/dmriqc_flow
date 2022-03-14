@@ -5,17 +5,14 @@ Run human pipeline
 
 USAGE
 
-nextflow run main.nf (--input) (-profile)
+nextflow run main.nf [OPTIONAL ARGUMENTS] (--input) (-profile)
 
 DESCRIPTION
 
     --input=/path/to/[root]             Input folder containing tractoflow input (bids structure or not)
                                         or TractoFlow or RBX results folder.
 
-    --output_dir                        Directory where to write the final results.
-                                        By default, will be in "./results_QC".
-
-    PROFILES (using -profile option (e.g. -profile tractoflow_qc_light,cbrain))
+PROFILES (using -profile option (e.g. -profile tractoflow_qc_light,cbrain))
 
     input_qc                            Create QC reports for your raw data (Can be a BIDS structure).
 
@@ -29,6 +26,13 @@ DESCRIPTION
 
     cbrain                              When this profile is used, Nextflow will copy all the output files in publishDir and not use symlinks.
                                         cbrain profile should be used as a second profile (e.g -profile input_qc,cbrain).
+
+OPTIONAL ARGUMENTS (current value)
+
+    --dicom_fields                      All dicom fields extracted to QC the DWI protocol - Works only with profile input_qc (--dicom_fields "$dicom_fields").
+
+    --output_dir                        Directory where to write the final results.
+                                        By default, will be in "./results_QC".
 
 Files should be compressed Nifti files (.nii.gz)
 
