@@ -1,4 +1,4 @@
-#!/home/bore/.virtualenvs/dmriqcpy_master/bin/python
+#!/usr/bin/python3.7
 
 import json
 import numpy as np
