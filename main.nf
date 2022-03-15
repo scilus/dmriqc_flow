@@ -1122,6 +1122,6 @@ process QC_RBx {
         mkdir -p \${i}
         mv *\${i}.png \${i}/
     done
-    dmriqc_from_screenshot.py report_rbx.html ${b_names} --sym_link
+    dmriqc_from_screenshot.py report_rbx.html --data ${b_names} --sym_link
     """
 }
