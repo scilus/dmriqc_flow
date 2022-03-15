@@ -937,20 +937,20 @@ process QC_DWI_Protocol {
         params.run_qc_dwi_protocol
 
     script:
-    def metadata = json.name != [] ? "--metadata json" : ''
+    def metadata = json.name != [] ? "--metadata json_f" : ''
     """
     export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
     export OMP_NUM_THREADS=1
     export OPENBLAS_NUM_THREADS=1
 
-    mkdir -p {bval,bvec}
+    mkdir -p {bval_f,bvec_f,json_f}
     for i in bval bvec json
     do
-      mv *\${i}* \${i}/;
+      mv *\${i} \${i}_f/;
     done
 
     dmriqc_dwi_protocol.py report_dwi_protocol.html\
-    --bval bval --bvec bvec\
+    --bval bval_f --bvec bvec_f\
     $metadata\
     --dicom_fields $params.dicom_fields\
     --tol $params.dwi_protocol_tol
