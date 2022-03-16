@@ -100,7 +100,7 @@ process QC_Brain_Extraction_DWI {
     export OPENBLAS_NUM_THREADS=1
 
     mkdir -p {no_bet,bet_mask}
-    mv *dwi_corrected.nii.gz no_bet/
+    mv *dwi*.nii.gz no_bet/
     mv *b0_bet_mask.nii.gz bet_mask/
 
     dmriqc_brain_extraction.py "Brain Extraction DWI" report_dwi_bet.html\
@@ -119,7 +119,8 @@ Channel
     .set{t1_bet_mask_for_bet}
 
 Channel
-    .fromPath("$input/**/Resample_T1/*t1_resampled.nii.gz", maxDepth:3)
+    .fromPath("$input/**/Resample_T1/*t1_resampled.nii.gz",
+      maxDepth:3)
     .collect(sort:true)
     .map{[it]}
     .set{t1_for_bet}
@@ -147,8 +148,8 @@ process QC_Brain_Extraction_T1 {
     export OPENBLAS_NUM_THREADS=1
 
     mkdir -p {no_bet,bet_mask}
-    mv *t1_resampled.nii.gz no_bet/
     mv *t1_bet_mask.nii.gz bet_mask/
+    mv *.nii.gz no_bet/
 
     dmriqc_brain_extraction.py "Brain Extraction T1" report_t1_bet.html\
     --no_bet no_bet\
@@ -232,17 +233,19 @@ process QC_Denoise_T1 {
 }
 
 Channel
-    .fromPath("$input/**/Bet_Prelim_DWI/*b0_bet.nii.gz", maxDepth:3)
+    .fromPath(["$input/**/Bet_Prelim_DWI/*b0_bet.nii.gz"],
+      maxDepth:3)
     .collect(sort:true)
-    .into{b0_for_eddy_topup;for_counter_b0}
+    .into{b0_for_eddy_topup;for_counter_b0;toto}
 
 Channel
-    .fromPath("$input/**/Bet_Prelim_DWI/*b0_bet_mask_dilated.nii.gz", maxDepth:3)
+    .fromPath("$input/**/Bet_DWI/*b0_bet_mask.nii.gz",
+      maxDepth:3)
     .collect(sort:true)
-    .set{b0_mask_for_eddy_topup}
+    .into{b0_mask_for_eddy_topup;truc}
 
 Channel
-    .fromPath("$input/**/Extract_B0/*b0.nii.gz", maxDepth:3)
+    .fromPath(["$input/**/Extract_B0/*b0.nii.gz","$input/**/Bet_DWI/*b0_no_bet.nii.gz"], maxDepth:3)
     .collect(sort:true)
     .into{b0_corrected;for_counter_b0_corrected}
 
@@ -306,7 +309,7 @@ process QC_Eddy_Topup {
 }
 
 Channel
-    .fromPath("$input/**/Resample_B0/*b0_resampled.nii.gz", maxDepth:3)
+    .fromPath("$input/**/*_B0/*b0_resampled.nii.gz", maxDepth:3)
     .collect(sort:true)
     .set{b0_resampled}
 
