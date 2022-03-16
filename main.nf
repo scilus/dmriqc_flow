@@ -232,17 +232,21 @@ process QC_Denoise_T1 {
 }
 
 Channel
-    .fromPath("$input/**/Bet_Prelim_DWI/*b0_bet.nii.gz", maxDepth:3)
+    .fromPath(["$input/**/Bet_Prelim_DWI/*b0_bet.nii.gz","$input/**/Topup/*b0_mean.nii.gz"],
+      size:1,
+      maxDepth:3)
     .collect(sort:true)
     .into{b0_for_eddy_topup;for_counter_b0}
 
 Channel
-    .fromPath("$input/**/Bet_Prelim_DWI/*b0_bet_mask_dilated.nii.gz", maxDepth:3)
+    .fromPath("$input/**/Bet_DWI/*b0_bet_mask.nii.gz",
+      size:1,
+      maxDepth:3)
     .collect(sort:true)
     .set{b0_mask_for_eddy_topup}
 
 Channel
-    .fromPath("$input/**/Extract_B0/*b0.nii.gz", maxDepth:3)
+    .fromPath("$input/**/Bet_DWI/*b0_bet.nii.gz", maxDepth:3)
     .collect(sort:true)
     .into{b0_corrected;for_counter_b0_corrected}
 
@@ -306,7 +310,7 @@ process QC_Eddy_Topup {
 }
 
 Channel
-    .fromPath("$input/**/Resample_B0/*b0_resampled.nii.gz", maxDepth:3)
+    .fromPath("$input/**/*_B0/*b0_resampled.nii.gz", maxDepth:3)
     .collect(sort:true)
     .set{b0_resampled}
 
