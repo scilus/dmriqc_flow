@@ -233,20 +233,18 @@ process QC_Denoise_T1 {
 
 Channel
     .fromPath(["$input/**/Bet_Prelim_DWI/*b0_bet.nii.gz","$input/**/Topup/*b0_mean.nii.gz"],
-      size:1,
       maxDepth:3)
     .collect(sort:true)
     .into{b0_for_eddy_topup;for_counter_b0}
 
 Channel
     .fromPath("$input/**/Bet_DWI/*b0_bet_mask.nii.gz",
-      size:1,
       maxDepth:3)
     .collect(sort:true)
     .set{b0_mask_for_eddy_topup}
 
 Channel
-    .fromPath("$input/**/Bet_DWI/*b0_bet.nii.gz", maxDepth:3)
+    .fromPath("$input/**/Bet_DWI/*b0_betq.nii.gz", maxDepth:3)
     .collect(sort:true)
     .into{b0_corrected;for_counter_b0_corrected}
 
