@@ -35,7 +35,7 @@ for (String item : theArr) {
    profiles.add(item);
 }
 
-if (profiles.get(0) != "input_qc" && profiles.get(0) != "tractoflow_qc_light" && profiles.get(0) != "tractoflow_qc_all" && profiles.get(0) != "rbx_qc" && profiles.get(0) != "disconects_qc")
+if (profiles.get(0) != "input_qc" && profiles.get(0) != "tractoflow_qc_light" && profiles.get(0) != "tractoflow_qc_all" && profiles.get(0) != "rbx_qc" && profiles.get(0) != "disconets_qc")
 {
     error "Error ~ Please select a profile (-profile): input_qc, tractoflow_qc_light, tractoflow_qc_all or rbx_qc."
 }
@@ -1188,7 +1188,7 @@ Channel.fromPath("$input/*labels.txt")
 matrice_for_create_csv.combine(labels)
     .set{matrices_labels_for_create_csv}
 
-process Create_disconects_csv {
+process Create_disconets_csv {
     cpus 1
     input:
     set sid, tid, file(before_mat), file(after_mat), file(label_atlas) from matrices_labels_for_create_csv
@@ -1203,7 +1203,7 @@ process Create_disconects_csv {
     labels="${label_atlas}"
     output_file="${sid}_${tid}_sc_ratio.csv"
 
-    template "disconects_qc_analysis.py"
+    template "disconets_qc_analysis.py"
 }
 
 Channel.fromPath("$input/**/**/Compute_Connectivity/Connectivity_w_lesion/*lesion_sc_matrix.png", maxDepth:6)

@@ -24,7 +24,7 @@ PROFILES (using -profile option (e.g. -profile tractoflow_qc_light,cbrain))
 
     rbx_qc                              Create QC reports for your rbx-flow results.
 
-    disconects_qc                       Create QC reports for your disconects_flow results.
+    disconets_qc                       Create QC reports for your disconets_flow results.
 
     cbrain                              When this profile is used, Nextflow will copy all the output files in publishDir and not use symlinks.
                                         cbrain profile should be used as a second profile (e.g -profile input_qc,cbrain).
