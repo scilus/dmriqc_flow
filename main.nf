@@ -236,13 +236,13 @@ Channel
     .fromPath(["$input/**/Bet_Prelim_DWI/*b0_bet.nii.gz"],
       maxDepth:3)
     .collect(sort:true)
-    .into{b0_for_eddy_topup;for_counter_b0;toto}
+    .into{b0_for_eddy_topup;for_counter_b0}
 
 Channel
     .fromPath("$input/**/Bet_DWI/*b0_bet_mask.nii.gz",
       maxDepth:3)
     .collect(sort:true)
-    .into{b0_mask_for_eddy_topup;truc}
+    .set{b0_mask_for_eddy_topup}
 
 Channel
     .fromPath(["$input/**/Extract_B0/*b0.nii.gz","$input/**/Bet_DWI/*b0_no_bet.nii.gz"], maxDepth:3)
