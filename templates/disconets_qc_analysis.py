@@ -21,7 +21,7 @@ for curr_index in range(len(indexes[0])):
 	val_1 = indexes[0][curr_index]
 	val_2 = indexes[1][curr_index]
 
-	if before[val_1,val_2] <= 1:
+	if before[val_1,val_2] <= 5:
 		continue
 
 	if val_1 > val_2:
