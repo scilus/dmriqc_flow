@@ -1129,21 +1129,56 @@ process QC_RBx {
     """
 }
 
-Channel.fromPath("$input/**/Register_T1/*space.nii.gz", maxDepth:4)
+Channel.fromPath("$input/**/Register_Lesions_T1s/*space.nii.gz", maxDepth:4)
     .collect(sort:true)
-    .set{t1_registered}
+    .set{t1_lesions_registered}
 
 Channel
     .fromPath("$input/*_labels.nii.gz")
     .collect()
-    .set{labels_for_qc}
+    .into{labels_for_register_lesions_qc;labels_for_register_tractograms_qc}
 
-process QC_Register_to_Template {
+process QC_Register_Lesions_to_Template {
     cpus params.eddy_topup_nb_threads
 
     input:
-    file(t1s) from t1_registered
-    file(template) from labels_for_qc
+    file(t1s) from t1_lesions_registered
+    file(template) from labels_for_register_lesions_qc
+
+    output:
+    file "report_register_to_template.html"
+    file "data"
+    file "libs"
+
+    when:
+    params.run_t1_register_to_template
+
+    script:
+    """
+    export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
+    export OMP_NUM_THREADS=1
+    export OPENBLAS_NUM_THREADS=1
+
+    dmriqc_labels.py report_register_to_template.html\
+    --t1 ${t1s}\
+    --label ${template} \
+    --skip $params.eddy_topup_skip\
+    --nb_threads $params.eddy_topup_nb_threads\
+    --nb_columns $params.eddy_topup_nb_columns\
+    --compute_lut
+    """
+}
+
+Channel.fromPath("$input/**/Register_Tractograms_T1s/*space.nii.gz", maxDepth:4)
+    .collect(sort:true)
+    .set{t1_tractograms_registered}
+
+process QC_Register_Tractograms_to_Template {
+    cpus params.eddy_topup_nb_threads
+
+    input:
+    file(t1s) from t1_tractograms_registered
+    file(template) from labels_for_register_tractograms_qc
 
     output:
     file "report_register_to_template.html"
