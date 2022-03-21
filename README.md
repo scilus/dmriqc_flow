@@ -8,3 +8,7 @@ QC available for these tools:
 - [Disconets_flow](https://github.com/scilus/disconets_flow)
 
 QC available also for raw input structure like BIDS or tractoflow input structure.
+
+## Nextflow version
+
+Please use nextflow 21.*
