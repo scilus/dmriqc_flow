@@ -35,7 +35,7 @@ for (String item : theArr) {
    profiles.add(item);
 }
 
-if (profiles.get(0) != "input_qc" && profiles.get(0) != "tractoflow_qc_light" && profiles.get(0) != "tractoflow_qc_all" && profiles.get(0) != "rbx_qc")
+if (profiles.get(0) != "input_qc" && profiles.get(0) != "tractoflow_qc_light" && profiles.get(0) != "tractoflow_qc_all" && profiles.get(0) != "rbx_qc" && profiles.get(0) != "disconets_qc")
 {
     error "Error ~ Please select a profile (-profile): input_qc, tractoflow_qc_light, tractoflow_qc_all or rbx_qc."
 }
@@ -1126,5 +1126,159 @@ process QC_RBx {
         mv *\${i}.png \${i}/
     done
     dmriqc_from_screenshot.py report_rbx.html --data ${b_names} --sym_link
+    """
+}
+
+Channel.fromPath("$input/**/Register_Lesions_T1s/*space.nii.gz", maxDepth:4)
+    .collect(sort:true)
+    .set{t1_lesions_registered}
+
+Channel
+    .fromPath("$input/*_labels.nii.gz")
+    .collect()
+    .into{labels_for_register_lesions_qc;labels_for_register_tractograms_qc}
+
+process QC_Register_Lesions_to_Template {
+    cpus params.eddy_topup_nb_threads
+
+    input:
+    file(t1s) from t1_lesions_registered
+    file(template) from labels_for_register_lesions_qc
+
+    output:
+    file "report_register_to_template.html"
+    file "data"
+    file "libs"
+
+    when:
+    params.run_t1_register_to_template
+
+    script:
+    """
+    export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
+    export OMP_NUM_THREADS=1
+    export OPENBLAS_NUM_THREADS=1
+
+    dmriqc_labels.py report_register_to_template.html\
+    --t1 ${t1s}\
+    --label ${template} \
+    --skip $params.eddy_topup_skip\
+    --nb_threads $params.eddy_topup_nb_threads\
+    --nb_columns $params.eddy_topup_nb_columns\
+    --compute_lut
+    """
+}
+
+Channel.fromPath("$input/**/Register_Tractograms_T1s/*space.nii.gz", maxDepth:4)
+    .collect(sort:true)
+    .set{t1_tractograms_registered}
+
+process QC_Register_Tractograms_to_Template {
+    cpus params.eddy_topup_nb_threads
+
+    input:
+    file(t1s) from t1_tractograms_registered
+    file(template) from labels_for_register_tractograms_qc
+
+    output:
+    file "report_register_to_template.html"
+    file "data"
+    file "libs"
+
+    when:
+    params.run_t1_register_to_template
+
+    script:
+    """
+    export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
+    export OMP_NUM_THREADS=1
+    export OPENBLAS_NUM_THREADS=1
+
+    dmriqc_labels.py report_register_to_template.html\
+    --t1 ${t1s}\
+    --label ${template} \
+    --skip $params.eddy_topup_skip\
+    --nb_threads $params.eddy_topup_nb_threads\
+    --nb_columns $params.eddy_topup_nb_columns\
+    --compute_lut
+    """
+}
+
+Channel.fromPath("$input/**/**/Compute_Connectivity/Connectivity_w_lesion/*lesion_sc.npy",
+    maxDepth:6)
+    .map{[it.parent.parent.parent.parent.name, it.parent.parent.parent.name, it]}
+    .set{matrice_lesion_for_combine}
+
+Channel.fromPath("$input/**/**/Compute_Connectivity/*atlas_sc.npy",
+    maxDepth:5)
+    .map{[it.parent.parent.parent.name, it.parent.parent.name, it]}
+    .set{matrice_atlas_for_combine}
+
+matrice_atlas_for_combine.join(matrice_lesion_for_combine, by: [0,1])
+    .set{matrice_for_create_csv}
+
+Channel.fromPath("$input/*labels.txt")
+    .set{labels}
+
+matrice_for_create_csv.combine(labels)
+    .set{matrices_labels_for_create_csv}
+
+process Create_disconets_csv {
+    cpus 1
+    input:
+    set sid, tid, file(before_mat), file(after_mat), file(label_atlas) from matrices_labels_for_create_csv
+
+    output:
+    file("${sid}_${tid}_sc_ratio.csv") into stats_to_be_collected
+
+    script:
+
+    before_m="${before_mat}"
+    after_m="${after_mat}"
+    labels="${label_atlas}"
+    output_file="${sid}_${tid}_sc_ratio.csv"
+
+    template "disconets_qc_analysis.py"
+}
+
+Channel.fromPath("$input/**/**/Compute_Connectivity/Connectivity_w_lesion/*lesion_sc_matrix.png", maxDepth:6)
+    .collect(sort: true)
+    .map{[it.parent.parent.parent.parent.name, it]}
+    .map{sid, png -> [sid.unique().join(",").replaceAll(",", " "), png].toList()}
+    .set{lesion_png}
+
+
+stats_to_be_collected
+  .collect()
+  .set{stats_for_matrix}
+
+process QC_SC_Matrices {
+    cpus 1
+
+    input:
+    set sid, file(png) from lesion_png
+    file(stats) from stats_for_matrix
+
+    output:
+    file "report_sc_matrices.html"
+    file "data"
+    file "libs"
+
+    when:
+    params.run_qc_matrices
+
+    script:
+    """
+    export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
+    export OMP_NUM_THREADS=1
+    export OPENBLAS_NUM_THREADS=1
+    ls -al
+    for i in ${sid};
+    do
+      echo \${i}
+      mkdir -p \${i}
+      mv \${i}*.* \${i}/
+    done
+    dmriqc_from_screenshot.py report_sc_matrices.html --data ${sid} --stats --sym_link
     """
 }
