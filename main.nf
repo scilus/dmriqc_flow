@@ -13,6 +13,10 @@ if(params.help) {
     return
 }
 
+if( !nextflow.version.matches('21.0+') ) {
+    error "This workflow requires Nextflow version 21.0 or greater -- You are running version $nextflow.version"
+}
+
 log.info "dMRIqc_flow"
 log.info "==========="
 log.info ""
@@ -37,7 +41,7 @@ for (String item : theArr) {
 
 if (profiles.get(0) != "input_qc" && profiles.get(0) != "tractoflow_qc_light" && profiles.get(0) != "tractoflow_qc_all" && profiles.get(0) != "rbx_qc" && profiles.get(0) != "disconets_qc")
 {
-    error "Error ~ Please select a profile (-profile): input_qc, tractoflow_qc_light, tractoflow_qc_all or rbx_qc."
+    error "Error ~ Please select a profile (-profile): input_qc, tractoflow_qc_light, tractoflow_qc_all, rbx_qc or disconets_qc."
 }
 
 
