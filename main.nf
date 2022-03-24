@@ -602,7 +602,7 @@ Channel
 
 tractograms
     .combine(t1_warped_for_tracking, by:[0,1])
-    .groupTuple()
+    .groupTuple(sort:true)
     .map{it -> it[2..-1]}
     .set{tracking_t1}
 
