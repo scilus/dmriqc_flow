@@ -610,7 +610,7 @@ process QC_Tracking {
     cpus params.tracking_nb_threads
 
     input:
-    set file(tracking), file("*warped.nii.gz") from tracking_t1
+    set file(tracking), file("?????warped.nii.gz") from tracking_t1
 
     output:
     file "report_tracking.html"
