@@ -567,7 +567,7 @@ else if (params.run_qc_extractor_orig){
     Channel
         .fromPath("$input/final_outputs/**/orig_space/*__t1_orig_space.nii.gz", maxDepth:5)
         .map{["report", it.parent.parent.name, it]}
-        .into{t1_extractor}
+        .set{t1_extractor}
 
     trk_extractor
         .combine(t1_extractor, by:[0,1])
@@ -1105,7 +1105,7 @@ process QC_Bundles {
             mv *\${i}.png \${i}
         done
 
-        dmriqc_from_screenshot.py report_rbx.html ${b_names} --sym_link
+        dmriqc_from_screenshot.py report_rbx.html --data ${b_names} --sym_link
         """
     }
     else if(params.run_qc_extractor_mni_extended){
@@ -1120,7 +1120,7 @@ process QC_Bundles {
             mv *\${i}.png \${i}
         done
 
-        dmriqc_from_screenshot.py report_extractor_mni_extended.html ${b_names} --sym_link
+        dmriqc_from_screenshot.py report_extractor_mni_extended.html --data ${b_names} --sym_link
         """
     }
     else if(params.run_qc_extractor_orig_extended){
@@ -1135,7 +1135,7 @@ process QC_Bundles {
             mv *\${i}.png \${i}
         done
 
-        dmriqc_from_screenshot.py report_extractor_orig_extended.html ${b_names} --sym_link
+        dmriqc_from_screenshot.py report_extractor_orig_extended.html --data ${b_names} --sym_link
         """
     }
 }
