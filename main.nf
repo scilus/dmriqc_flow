@@ -35,7 +35,7 @@ for (String item : theArr) {
    profiles.add(item);
 }
 
-if ( profiles.get(0) != "input_qc" && profiles.get(0) != "tractoflow_qc_light" && profiles.get(0) != "tractoflow_qc_all" && profiles.get(0) != "rbx_qc" && profiles.get(0) != "extractorflow_qc_mni" && profiles.get(0) != "extractorflow_qc_orig" && profiles.get(0) != "extractorflow_qc_mni_extended")
+if ( profiles.get(0) != "input_qc" && profiles.get(0) != "tractoflow_qc_light" && profiles.get(0) != "tractoflow_qc_all" && profiles.get(0) != "rbx_qc" && profiles.get(0) != "extractorflow_qc_mni" && profiles.get(0) != "extractorflow_qc_orig" && profiles.get(0) != "extractorflow_qc_mni_extended" && profiles.get(0) != "extractorflow_qc_orig_extended")
 {
     error "Error ~ Please select a profile (-profile): input_qc, extractorflow, tractoflow_qc_light or tractoflow_qc_all or extractorflow_qc_mni (_extended) or extractorflow_qc_orig (_extended)."
 }
