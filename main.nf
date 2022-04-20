@@ -5,12 +5,15 @@ params.help = false
 
 if(params.help) {
     usage = file("$baseDir/USAGE")
-
+    bindings = ["dicom_fields":"$params.dicom_fields"]
     engine = new groovy.text.SimpleTemplateEngine()
-    template = engine.createTemplate(usage.text).make()
-
+    template = engine.createTemplate(usage.text).make(bindings)
     print template.toString()
     return
+}
+
+if( !nextflow.version.matches('21.0+') ) {
+    error "This workflow requires Nextflow version 21.0 or greater -- You are running version $nextflow.version"
 }
 
 log.info "dMRIqc_flow"
@@ -35,7 +38,7 @@ for (String item : theArr) {
    profiles.add(item);
 }
 
-if ( profiles.get(0) != "input_qc" && profiles.get(0) != "tractoflow_qc_light" && profiles.get(0) != "tractoflow_qc_all" && profiles.get(0) != "rbx_qc" && profiles.get(0) != "extractorflow_qc_mni" && profiles.get(0) != "extractorflow_qc_orig" && profiles.get(0) != "extractorflow_qc_mni_extended" && profiles.get(0) != "extractorflow_qc_orig_extended")
+if ( profiles.get(0) != "input_qc" && profiles.get(0) != "tractoflow_qc_light" && profiles.get(0) != "tractoflow_qc_all" && profiles.get(0) != "rbx_qc" && profiles.get(0) != "disconets_qc" && profiles.get(0) != "extractorflow_qc_mni" && profiles.get(0) != "extractorflow_qc_orig" && profiles.get(0) != "extractorflow_qc_mni_extended" && profiles.get(0) != "extractorflow_qc_orig_extended")
 {
     error "Error ~ Please select a profile (-profile): input_qc, extractorflow, tractoflow_qc_light or tractoflow_qc_all or extractorflow_qc_mni (_extended) or extractorflow_qc_orig (_extended)."
 }
@@ -104,9 +107,14 @@ process QC_Brain_Extraction_DWI {
     export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
     export OMP_NUM_THREADS=1
     export OPENBLAS_NUM_THREADS=1
+
+    mkdir -p {no_bet,bet_mask}
+    mv *dwi*.nii.gz no_bet/
+    mv *b0_bet_mask.nii.gz bet_mask/
+
     dmriqc_brain_extraction.py "Brain Extraction DWI" report_dwi_bet.html\
-    --images_no_bet $dwi\
-    --images_bet_mask $mask\
+    --no_bet no_bet/\
+    --bet_mask bet_mask\
     --skip $params.bet_dwi_skip\
     --nb_threads $params.bet_dwi_nb_threads\
     --nb_columns $params.bet_dwi_nb_columns
@@ -120,7 +128,8 @@ Channel
     .set{t1_bet_mask_for_bet}
 
 Channel
-    .fromPath("$input/**/Resample_T1/*t1_resampled.nii.gz", maxDepth:3)
+    .fromPath("$input/**/Resample_T1/*t1_resampled.nii.gz",
+      maxDepth:3)
     .collect(sort:true)
     .map{[it]}
     .set{t1_for_bet}
@@ -146,9 +155,14 @@ process QC_Brain_Extraction_T1 {
     export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
     export OMP_NUM_THREADS=1
     export OPENBLAS_NUM_THREADS=1
+
+    mkdir -p {no_bet,bet_mask}
+    mv *t1_bet_mask.nii.gz bet_mask/
+    mv *.nii.gz no_bet/
+
     dmriqc_brain_extraction.py "Brain Extraction T1" report_t1_bet.html\
-    --images_no_bet $t1\
-    --images_bet_mask $mask\
+    --no_bet no_bet\
+    --bet_mask bet_mask\
     --skip $params.bet_t1_skip\
     --nb_threads $params.bet_t1_nb_threads\
     --nb_columns $params.bet_t1_nb_columns
@@ -179,8 +193,12 @@ process QC_Denoise_DWI {
     export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
     export OMP_NUM_THREADS=1
     export OPENBLAS_NUM_THREADS=1
+
+    mkdir images
+    mv *dwi_denoised.nii.gz images/
+
     dmriqc_generic.py "Denoise DWI" report_denoise_dwi.html\
-    --images $dwi\
+    --images images\
     --skip $params.denoise_dwi_skip\
     --nb_threads $params.denoise_dwi_nb_threads\
     --nb_columns $params.denoise_dwi_nb_columns
@@ -211,8 +229,12 @@ process QC_Denoise_T1 {
     export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
     export OMP_NUM_THREADS=1
     export OPENBLAS_NUM_THREADS=1
+
+    mkdir images
+    mv *t1_denoised.nii.gz images/
+
     dmriqc_generic.py "Denoise T1" report_denoise_t1.html\
-    --images $t1\
+    --images images\
     --skip $params.denoise_t1_skip\
     --nb_threads $params.denoise_t1_nb_threads\
     --nb_columns $params.denoise_t1_nb_columns
@@ -220,17 +242,19 @@ process QC_Denoise_T1 {
 }
 
 Channel
-    .fromPath("$input/**/Bet_Prelim_DWI/*b0_bet.nii.gz", maxDepth:3)
+    .fromPath(["$input/**/Bet_Prelim_DWI/*b0_bet.nii.gz"],
+      maxDepth:3)
     .collect(sort:true)
     .into{b0_for_eddy_topup;for_counter_b0}
 
 Channel
-    .fromPath("$input/**/Bet_Prelim_DWI/*b0_bet_mask_dilated.nii.gz", maxDepth:3)
+    .fromPath("$input/**/Bet_DWI/*b0_bet_mask.nii.gz",
+      maxDepth:3)
     .collect(sort:true)
     .set{b0_mask_for_eddy_topup}
 
 Channel
-    .fromPath("$input/**/Extract_B0/*b0.nii.gz", maxDepth:3)
+    .fromPath(["$input/**/Extract_B0/*b0.nii.gz","$input/**/Bet_DWI/*b0_no_bet.nii.gz"], maxDepth:3)
     .collect(sort:true)
     .into{b0_corrected;for_counter_b0_corrected}
 
@@ -279,12 +303,13 @@ process QC_Eddy_Topup {
     do
         echo \$i >> mask.txt
     done
+    mkdir images
     paste b0.txt b0_corrected.txt mask.txt | while read a b c; do filename=\$(basename -- "\$b");\
     filename="\${filename%.*.*}"; mrcalc \$b \$c -mult \${filename}_corrected_masked.nii.gz;\
-    mrcat \$a \${filename}_corrected_masked.nii.gz \${filename}_eddy_topup.nii.gz; done
+    mrcat \$a \${filename}_corrected_masked.nii.gz images/\${filename}_eddy_topup.nii.gz; done
 
     dmriqc_generic.py "Eddy Topup" report_eddy_topup.html\
-    --images *_eddy_topup.nii.gz\
+    --images images\
     --skip $params.eddy_topup_skip\
     --nb_threads $params.eddy_topup_nb_threads\
     --nb_columns $params.eddy_topup_nb_columns\
@@ -293,7 +318,7 @@ process QC_Eddy_Topup {
 }
 
 Channel
-    .fromPath("$input/**/Resample_B0/*b0_resampled.nii.gz", maxDepth:3)
+    .fromPath("$input/**/*_B0/*b0_resampled.nii.gz", maxDepth:3)
     .collect(sort:true)
     .set{b0_resampled}
 
@@ -319,8 +344,16 @@ process QC_Resample_DWI {
     export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
     export OMP_NUM_THREADS=1
     export OPENBLAS_NUM_THREADS=1
+
+    mkdir -p {images,wm,csf,gm}
+    mv *b0_resampled.nii.gz images/
+    for i in wm csf gm
+    do
+      mv *\${i}.nii.gz \${i}/
+    done
+
     dmriqc_generic.py "Resample DWI" report_resampled_dwi.html\
-    --images $b0 --wm $wm --gm $gm --csf $csf\
+    --images images --wm wm --gm gm --csf csf\
     --skip $params.resample_dwi_skip\
     --nb_threads $params.resample_dwi_nb_threads\
     --nb_columns $params.resample_dwi_nb_columns
@@ -351,8 +384,12 @@ process QC_Resample_T1 {
     export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
     export OMP_NUM_THREADS=1
     export OPENBLAS_NUM_THREADS=1
+
+    mkdir images
+    mv *t1_resampled.nii.gz images/
+
     dmriqc_generic.py "Resample T1" report_resampled_t1.html\
-    --images $t1\
+    --images images\
     --skip $params.resample_t1_skip\
     --nb_threads $params.resample_t1_nb_threads\
     --nb_columns $params.resample_t1_nb_columns
@@ -426,14 +463,22 @@ process QC_DTI {
     export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
     export OMP_NUM_THREADS=1
     export OPENBLAS_NUM_THREADS=1
+
+    mkdir -p {fa,md,rd,ad,residual,evecs_v1,wm,gm,csf}
+
+    for i in fa md rd ad residual evecs_v1 wm csf gm
+    do
+      mv *\${i}.nii.gz \${i}/;
+    done
+
     dmriqc_dti.py report_dti.html\
-    --fa $fa\
-    --md $md\
-    --rd $rd\
-    --ad $ad\
-    --residual $residual\
-    --evecs_v1 $evecs_v1\
-    --wm $wm --gm $gm --csf $csf\
+    --fa fa\
+    --md md\
+    --rd rd\
+    --ad ad\
+    --residual residual\
+    --evecs_v1 evecs_v1\
+    --wm wm --gm gm --csf csf\
     --skip $params.dti_skip\
     --nb_threads $params.dti_nb_threads\
     --nb_columns $params.dti_nb_columns
@@ -463,7 +508,11 @@ process QC_FRF {
     export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
     export OMP_NUM_THREADS=1
     export OPENBLAS_NUM_THREADS=1
-    dmriqc_frf.py $frf report_compute_frf.html
+
+    mkdir images
+    mv *frf.txt images/
+
+    dmriqc_frf.py images report_compute_frf.html
     """
 }
 
@@ -522,12 +571,19 @@ process QC_FODF {
     export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
     export OMP_NUM_THREADS=1
     export OPENBLAS_NUM_THREADS=1
+
+    mkdir -p {afd_max,afd_sum,afd_total,nufo,wm,csf,gm}
+    for i in afd_max afd_sum afd_total nufo wm csf gm
+    do
+      mv *\${i}.nii.gz \${i}/;
+    done
+
     dmriqc_fodf.py report_fodf.html\
-    --afd_max $afd_max\
-    --afd_sum $afd_sum\
-    --afd_total $afd_total\
-    --nufo $nufo\
-    --wm $wm --gm $gm --csf $csf\
+    --afd_max afd_max\
+    --afd_sum afd_sum\
+    --afd_total afd_total\
+    --nufo nufo\
+    --wm wm --gm gm --csf csf\
     --skip $params.fodf_skip\
     --nb_threads $params.fodf_nb_threads\
     --nb_columns $params.fodf_nb_columns
@@ -599,7 +655,7 @@ process QC_Tracking {
     cpus params.tracking_nb_threads
 
     input:
-    set file(trk), file(t1) from tracking_t1
+    set file(tracking), file("?????warped.nii.gz") from tracking_t1
 
     output:
     file "report_*.html"
@@ -610,20 +666,24 @@ process QC_Tracking {
         params.run_qc_tracking
 
     script:
+    mkdir -p {anat,trks}
+    mv *warped.nii.gz anat/
+    mv *.trk trks/
+
     if (params.run_qc_extractor_mni){
         """
-        dmriqc_tractogram.py report_tracking_mni.html --tractograms $trk --t1 $t1
+        dmriqc_tractogram.py report_tracking_mni.html --tractograms trk --t1 anat
         """
     }
     else if (params.run_qc_extractor_orig){
         """
-        dmriqc_tractogram.py report_tracking_orig.html --tractograms $trk --t1 $t1
+        dmriqc_tractogram.py report_tracking_orig.html --tractograms trk --t1 anat
         """
     }
     else
     {
         """
-        dmriqc_tractogram.py report_tracking.html --tractograms $trk --t1 $t1
+        dmriqc_tractogram.py report_tracking.html --tractograms trk --t1 anat
         """
     }
 }
@@ -694,8 +754,15 @@ process QC_Segment_Tissues {
     export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
     export OMP_NUM_THREADS=1
     export OPENBLAS_NUM_THREADS=1
+
+    mkdir -p {wm,csf,gm}
+    for i in wm csf gm
+    do
+      mv *\${i}.nii.gz \${i}/;
+    done
+
     dmriqc_tissues.py report_segment_tissues.html\
-    --wm $wm --gm $gm --csf $csf\
+    --wm wm --gm gm --csf csf\
     --skip $params.segment_tissues_skip\
     --nb_threads $params.segment_tissues_nb_threads\
     --nb_columns $params.segment_tissues_nb_columns
@@ -738,9 +805,16 @@ process QC_PFT_Maps {
     export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
     export OMP_NUM_THREADS=1
     export OPENBLAS_NUM_THREADS=1
+
+    mkdir -p {seeding_mask,map_include,map_exclude}
+    for i in seeding_mask map_include map_exclude
+    do
+      mv *\${i}.nii.gz \${i}/;
+    done
+
     dmriqc_tracking_maps.py pft report_pft_maps.html\
-    --seeding_mask $seeding_mask --map_include $map_include\
-    --map_exclude $map_exclude\
+    --seeding_mask seeding_mask --map_include map_include\
+    --map_exclude map_exclude\
     --skip $params.pft_maps_skip\
     --nb_threads $params.pft_maps_nb_threads\
     --nb_columns $params.pft_maps_nb_columns
@@ -771,8 +845,12 @@ process QC_Local_Tracking_Mask {
     export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
     export OMP_NUM_THREADS=1
     export OPENBLAS_NUM_THREADS=1
+
+    mkdir images
+    mv *tracking_mask.nii.gz images/
+
     dmriqc_generic.py "Tracking mask" report_local_tracking_mask.html\
-        --images $tracking_mask\
+        --images images\
         --skip $params.local_tracking_mask_skip\
         --nb_threads $params.local_tracking_mask_nb_threads\
         --nb_columns $params.local_tracking_mask_nb_columns
@@ -803,8 +881,12 @@ process QC_Local_Seeding_Mask {
     export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
     export OMP_NUM_THREADS=1
     export OPENBLAS_NUM_THREADS=1
+
+    mkdir images
+    mv *seeding_mask.nii.gz images/
+
     dmriqc_generic.py "Seeding mask" report_local_seeding_mask.html\
-            --images $seeding_mask\
+            --images images\
             --skip $params.local_seeding_mask_skip\
             --nb_threads $params.local_seeding_mask_nb_threads\
             --nb_columns $params.local_seeding_mask_nb_columns
@@ -839,9 +921,16 @@ process QC_Register_T1 {
     export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
     export OMP_NUM_THREADS=1
     export OPENBLAS_NUM_THREADS=1
+
+    mkdir -p {t1_warped,rgb,wm,csf,gm}
+    for i in t1_warped rgb wm csf gm
+    do
+      mv *\${i}.nii.gz \${i}/;
+    done
+
     dmriqc_registration.py report_registration.html\
-    --t1 $t1 --rgb $rgb\
-    --wm $wm --gm $gm --csf $csf\
+    --t1 t1_warped --rgb rgb\
+    --wm wm --gm gm --csf csf\
     --skip $params.register_skip\
     --nb_threads $params.register_nb_threads\
     --nb_columns $params.register_nb_columns
@@ -862,6 +951,23 @@ all_raw_bval
   .mix(all_bids_bval)
   .collect(sort:true)
   .set{all_bval}
+
+Channel
+  .fromPath("$input/sub-*/**/*dwi.json", maxDepth:4)
+  .map{it}
+  .toSortedList()
+  .set{all_bids_json}
+
+Channel
+  .fromPath("$input/**/*dwi.json", maxDepth:1)
+  .map{it}
+  .toSortedList()
+  .set{all_raw_json}
+
+all_raw_json
+  .mix(all_bids_json)
+  .collect(sort:true)
+  .set{all_json}
 
 Channel
     .fromPath("$input/**/*bvec", maxDepth:1)
@@ -885,6 +991,7 @@ process QC_DWI_Protocol {
     input:
     file(bval) from all_bval
     file(bvec) from all_bvec
+    file(json) from all_json
 
     output:
     file "report_dwi_protocol.html"
@@ -895,12 +1002,22 @@ process QC_DWI_Protocol {
         params.run_qc_dwi_protocol
 
     script:
+    def metadata = json.name != [] ? "--metadata json_f" : ''
     """
     export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
     export OMP_NUM_THREADS=1
     export OPENBLAS_NUM_THREADS=1
+
+    mkdir -p {bval_f,bvec_f,json_f}
+    for i in bval bvec json
+    do
+      mv *\${i} \${i}_f/;
+    done
+
     dmriqc_dwi_protocol.py report_dwi_protocol.html\
-    --bval $bval --bvec $bvec\
+    --bval bval_f --bvec bvec_f\
+    $metadata\
+    --dicom_fields $params.dicom_fields\
     --tol $params.dwi_protocol_tol
     """
 }
@@ -939,8 +1056,12 @@ process QC_Raw_T1 {
     export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
     export OMP_NUM_THREADS=1
     export OPENBLAS_NUM_THREADS=1
+
+    mkdir images
+    mv *gz images/
+
     dmriqc_generic.py "Raw_T1" report_raw_t1.html\
-        --images $t1\
+        --images images\
         --skip $params.raw_t1_skip\
         --nb_threads $params.raw_t1_nb_threads\
         --nb_columns $params.raw_t1_nb_columns
@@ -981,8 +1102,12 @@ process QC_Raw_DWI {
     export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
     export OMP_NUM_THREADS=1
     export OPENBLAS_NUM_THREADS=1
+
+    mkdir images
+    mv *gz images/
+
     dmriqc_generic.py "Raw_DWI" report_raw_dwi.html\
-        --images $dwi\
+        --images images\
         --skip $params.raw_dwi_skip\
         --nb_threads $params.raw_dwi_nb_threads\
         --nb_columns $params.raw_dwi_nb_columns
@@ -1138,4 +1263,158 @@ process QC_Bundles {
         dmriqc_from_screenshot.py report_extractor_orig_extended.html --data ${b_names} --sym_link
         """
     }
+
+    Channel.fromPath("$input/**/Register_Lesions_T1s/*space.nii.gz", maxDepth:4)
+        .collect(sort:true)
+        .set{t1_lesions_registered}
+
+    Channel
+        .fromPath("$input/*_labels.nii.gz")
+        .collect()
+        .into{labels_for_register_lesions_qc;labels_for_register_tractograms_qc}
+
+    process QC_Register_Lesions_to_Template {
+        cpus params.eddy_topup_nb_threads
+
+        input:
+        file(t1s) from t1_lesions_registered
+        file(template) from labels_for_register_lesions_qc
+
+        output:
+        file "report_register_to_template.html"
+        file "data"
+        file "libs"
+
+        when:
+        params.run_t1_register_to_template
+
+        script:
+        """
+        export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
+        export OMP_NUM_THREADS=1
+        export OPENBLAS_NUM_THREADS=1
+
+        dmriqc_labels.py report_register_to_template.html\
+        --t1 ${t1s}\
+        --label ${template} \
+        --skip $params.eddy_topup_skip\
+        --nb_threads $params.eddy_topup_nb_threads\
+        --nb_columns $params.eddy_topup_nb_columns\
+        --compute_lut
+        """
+    }
+
+    Channel.fromPath("$input/**/Register_Tractograms_T1s/*space.nii.gz", maxDepth:4)
+        .collect(sort:true)
+        .set{t1_tractograms_registered}
+
+    process QC_Register_Tractograms_to_Template {
+        cpus params.eddy_topup_nb_threads
+
+        input:
+        file(t1s) from t1_tractograms_registered
+        file(template) from labels_for_register_tractograms_qc
+
+        output:
+        file "report_register_to_template.html"
+        file "data"
+        file "libs"
+
+        when:
+        params.run_t1_register_to_template
+
+        script:
+        """
+        export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
+        export OMP_NUM_THREADS=1
+        export OPENBLAS_NUM_THREADS=1
+
+        dmriqc_labels.py report_register_to_template.html\
+        --t1 ${t1s}\
+        --label ${template} \
+        --skip $params.eddy_topup_skip\
+        --nb_threads $params.eddy_topup_nb_threads\
+        --nb_columns $params.eddy_topup_nb_columns\
+        --compute_lut
+        """
+    }
+
+    Channel.fromPath("$input/**/**/Compute_Connectivity/Connectivity_w_lesion/*lesion_sc.npy",
+        maxDepth:6)
+        .map{[it.parent.parent.parent.parent.name, it.parent.parent.parent.name, it]}
+        .set{matrice_lesion_for_combine}
+
+    Channel.fromPath("$input/**/**/Compute_Connectivity/*atlas_sc.npy",
+        maxDepth:5)
+        .map{[it.parent.parent.parent.name, it.parent.parent.name, it]}
+        .set{matrice_atlas_for_combine}
+
+    matrice_atlas_for_combine.join(matrice_lesion_for_combine, by: [0,1])
+        .set{matrice_for_create_csv}
+
+    Channel.fromPath("$input/*labels.txt")
+        .set{labels}
+
+    matrice_for_create_csv.combine(labels)
+        .set{matrices_labels_for_create_csv}
+
+    process Create_disconets_csv {
+        cpus 1
+        input:
+        set sid, tid, file(before_mat), file(after_mat), file(label_atlas) from matrices_labels_for_create_csv
+
+        output:
+        file("${sid}_${tid}_sc_ratio.csv") into stats_to_be_collected
+
+        script:
+
+        before_m="${before_mat}"
+        after_m="${after_mat}"
+        labels="${label_atlas}"
+        output_file="${sid}_${tid}_sc_ratio.csv"
+
+        template "disconets_qc_analysis.py"
+    }
+
+    Channel.fromPath("$input/**/**/Compute_Connectivity/Connectivity_w_lesion/*lesion_sc_matrix.png", maxDepth:6)
+        .collect(sort: true)
+        .map{[it.parent.parent.parent.parent.name, it]}
+        .map{sid, png -> [sid.unique().join(",").replaceAll(",", " "), png].toList()}
+        .set{lesion_png}
+
+
+    stats_to_be_collected
+      .collect()
+      .set{stats_for_matrix}
+
+    process QC_SC_Matrices {
+        cpus 1
+
+        input:
+        set sid, file(png) from lesion_png
+        file(stats) from stats_for_matrix
+
+        output:
+        file "report_sc_matrices.html"
+        file "data"
+        file "libs"
+
+        when:
+        params.run_qc_matrices
+
+        script:
+        """
+        export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
+        export OMP_NUM_THREADS=1
+        export OPENBLAS_NUM_THREADS=1
+        ls -al
+        for i in ${sid};
+        do
+          echo \${i}
+          mkdir -p \${i}
+          mv \${i}*.* \${i}/
+        done
+        dmriqc_from_screenshot.py report_sc_matrices.html --data ${sid} --stats --sym_link
+        """
+
 }
