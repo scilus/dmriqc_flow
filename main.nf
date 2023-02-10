@@ -76,12 +76,12 @@ Channel
     .set{b0_bet_mask_for_bet}
 
 Channel
-    .fromPath(["$input/**/Eddy/*dwi_corrected.nii.gz", "$input/**/Eddy_Topup/*dwi_corrected.nii.gz"], maxDepth:3)
+    .fromPath(["$input/**/N4_DWI/*dwi_n4.nii.gz"], maxDepth:3)
     .collect(sort:true)
     .map{[it]}
-    .set{dwi_eddy_for_bet}
+    .set{dwi_n4_for_bet}
 
-dwi_eddy_for_bet.combine(b0_bet_mask_for_bet).set{dwi_mask_for_bet}
+dwi_n4_for_bet.combine(b0_bet_mask_for_bet).set{dwi_mask_for_bet}
 
 process QC_Brain_Extraction_DWI {
     cpus params.bet_dwi_nb_threads
@@ -167,13 +167,13 @@ process QC_Brain_Extraction_T1 {
 Channel
     .fromPath("$input/**/Denoise_DWI/*dwi_denoised.nii.gz", maxDepth:3)
     .collect(sort:true)
-    .set{dwi_denoised}
+    .into{dwi_denoised_for_qc_denoise; dwi_denoised_for_qc_gibbs}
 
 process QC_Denoise_DWI {
     cpus params.denoise_dwi_nb_threads
 
     input:
-    file(dwi) from dwi_denoised
+    file(dwi) from dwi_denoised_for_qc_denoise
 
     output:
     file "report_denoise_dwi.html"
@@ -237,71 +237,143 @@ process QC_Denoise_T1 {
 }
 
 Channel
-    .fromPath(["$input/**/Bet_Prelim_DWI/*b0_bet.nii.gz"],
+    .fromPath("$input/**/Gibbs_correction/*dwi_gibbs_corrected.nii.gz",
       maxDepth:3)
-    .collect(sort:true)
-    .into{b0_for_eddy_topup;for_counter_b0}
+      .collect(sort:true)
+      .set{dwi_gibbs_corrected}
 
 Channel
-    .fromPath("$input/**/Bet_DWI/*b0_bet_mask.nii.gz",
-      maxDepth:3)
-    .collect(sort:true)
-    .set{b0_mask_for_eddy_topup}
+    .fromPath("$input/**/Extract_DTI_Shell/*bvec*")
+      .collect(sort:true)
+      .set{bvecs_for_gibbs}
 
 Channel
-    .fromPath(["$input/**/Extract_B0/*b0.nii.gz","$input/**/Bet_DWI/*b0_no_bet.nii.gz"], maxDepth:3)
-    .collect(sort:true)
-    .into{b0_corrected;for_counter_b0_corrected}
+    .fromPath("$input/**/Extract_DTI_Shell/*bval*")
+      .collect(sort:true)
+      .set{bvals_for_gibbs}
 
-for_counter_b0
-    .flatten()
-    .count()
-    .set{counter_b0}
-
-for_counter_b0_corrected
-    .flatten()
-    .count()
-    .set{counter_b0_eddy}
-
-process QC_Eddy_Topup {
-    cpus params.eddy_topup_nb_threads
+process QC_Gibbs_Correction {
+    cpus params.gibbs_nb_threads
 
     input:
-    file(b0) from b0_for_eddy_topup
-    file(b0_corrected) from b0_corrected
-    file(mask) from b0_mask_for_eddy_topup
-    val(counter_b0_before) from counter_b0
-    val(counter_b0_corrected) from counter_b0_eddy
+      file(dwi_before) from dwi_denoised_for_qc_gibbs
+      file(dwi_after) from dwi_gibbs_corrected
 
     output:
-    file "report_eddy_topup.html"
-    file "data"
-    file "libs"
+      file "report_gibbs_correction.html"
+      file "data"
+      file "libs"
 
     when:
-    (counter_b0_before == counter_b0_corrected) && params.run_qc_eddy_topup
+      params.run_qc_denoise_dwi && params.run_qc_gibbs_correction
 
     script:
     """
     export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
     export OMP_NUM_THREADS=1
     export OPENBLAS_NUM_THREADS=1
-    for i in $b0
+    for i in $dwi_before
     do
-        echo \$i >> b0.txt
+        echo \$i >> dwi_before.txt
     done
-    for i in $b0_corrected
+    for i in $dwi_after
     do
-        echo \$i >> b0_corrected.txt
+      echo \$i >> dwi_after.txt
     done
-    for i in $mask
+
+    mkdir images
+    paste dwi_before.txt dwi_after.txt | while read a b;
     do
-        echo \$i >> mask.txt
+      filename=\$(basename -- "\$b");\
+      filename="\${filename%.*.*}";
+      mrconvert \$a -coord 3 0 -axes 0,1,2 \${filename}_b0_before.nii.gz
+      mrconvert \$b -coord 3 0 -axes 0,1,2 \${filename}_b0_after.nii.gz
+      mrcat \${filename}_b0_before.nii.gz \${filename}_b0_after.nii.gz images/\${filename}_gibbs.nii.gz
+    done
+
+    dmriqc_generic.py "GIBSS Correction" report_gibbs_correction.html\
+      --images images\
+      --skip $params.gibbs_skip\
+      --nb_threads $params.gibbs_nb_threads\
+      --nb_columns $params.gibbs_nb_columns\
+      --duration $params.gibbs_duration
+    """
+}
+
+Channel
+    .fromPath("$input/**/Denoise_DWI/*denoised.nii.gz",
+      maxDepth:3)
+      .collect(sort:true)
+      .set{dwi_before_for_eddy_topup}
+
+Channel
+    .fromPath(["$input/**/Eddy_Topup/*bvec", "$input/**/Eddy/*bvec"])
+      .collect(sort:true)
+      .set{bvecs_for_eddy_topup}
+
+Channel
+      .fromPath(["$input/**/Eddy_Topup/*_corrected.nii.gz", "$input/**/Eddy/*_corrected.nii.gz"])
+      .collect(sort:true)
+      .set{dwi_corrected_for_eddy_topup}
+
+Channel
+      .fromPath("$input/**/Eddy_Topup/*_mask.nii.gz")
+      .collect(sort:true)
+      .set{mask_for_eddy_topup}
+
+Channel
+      .fromPath(["$input/**/Eddy_Topup/*bval_eddy", "$input/**/Eddy/*bval_eddy"])
+        .collect(sort:true)
+        .set{bvals_for_eddy_topup}
+
+process QC_Eddy_Topup {
+    cpus params.eddy_topup_nb_threads
+
+    input:
+    file(dwi_before) from dwi_before_for_eddy_topup
+    file(dwi_after) from dwi_corrected_for_eddy_topup
+    file(bvals) from bvals_for_eddy_topup
+    file(bvecs) from bvecs_for_eddy_topup
+
+    output:
+    file "report_eddy_topup.html"
+    file "data"
+    file "libs"
+    files "images/*gz"
+
+    when:
+    params.run_qc_eddy_topup
+
+    script:
+    """
+    export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
+    export OMP_NUM_THREADS=1
+    export OPENBLAS_NUM_THREADS=1
+    for i in $dwi_before
+    do
+        echo \$i >> dwi_before.txt
+    done
+    for i in $dwi_after
+    do
+        echo \$i >> dwi_after.txt
+    done
+    for i in $bvals
+    do
+        echo \$i >> bvals.txt
+    done
+    for i in $bvecs
+    do
+        echo \$i >> bvecs.txt
     done
     mkdir images
-    paste b0.txt b0_corrected.txt mask.txt | while read a b c; do filename=\$(basename -- "\$b");\
-    filename="\${filename%.*.*}"; mrcalc \$b \$c -mult \${filename}_corrected_masked.nii.gz;\
-    mrcat \$a \${filename}_corrected_masked.nii.gz images/\${filename}_eddy_topup.nii.gz; done
+    paste dwi_before.txt dwi_after.txt bvals.txt bvecs.txt | while read a b c d;
+    do
+    filename=\$(basename -- "\$b");\
+    filename="\${filename%.*.*}";
+    scil_extract_b0.py --mean --b0_thr 50 \$a \$c \$d \${filename}_b0_before.nii.gz;\
+    scil_extract_b0.py --mean --b0_thr 50 \$b \$c \$d \${filename}_b0_after.nii.gz;\
+    mrcat \${filename}_b0_before.nii.gz \${filename}_b0_after.nii.gz images/\${filename}__eddy_topup.nii.gz
+    done
 
     dmriqc_generic.py "Eddy Topup" report_eddy_topup.html\
     --images images\
@@ -880,7 +952,7 @@ process QC_Register_T1 {
 }
 
 Channel
-    .fromPath("$input/**/*bval", maxDepth:1)
+    .fromPath("$input/**/*bval", maxDepth:2)
     .collect(sort:true)
     .set{all_raw_bval}
 
