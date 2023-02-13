@@ -291,7 +291,7 @@ process QC_Gibbs_Correction {
       mrcat \${filename}_b0_before.nii.gz \${filename}_b0_after.nii.gz images/\${filename}_gibbs.nii.gz
     done
 
-    dmriqc_generic.py "GIBSS Correction" report_gibbs_correction.html\
+    dmriqc_generic.py "GIBBS Correction" report_gibbs_correction.html\
       --images images\
       --skip $params.gibbs_skip\
       --nb_threads $params.gibbs_nb_threads\
@@ -368,11 +368,11 @@ process QC_Eddy_Topup {
     mkdir images
     paste dwi_before.txt dwi_after.txt bvals.txt bvecs.txt | while read a b c d;
     do
-    filename=\$(basename -- "\$b");\
-    filename="\${filename%.*.*}";
-    scil_extract_b0.py --mean --b0_thr 50 \$a \$c \$d \${filename}_b0_before.nii.gz;\
-    scil_extract_b0.py --mean --b0_thr 50 \$b \$c \$d \${filename}_b0_after.nii.gz;\
-    mrcat \${filename}_b0_before.nii.gz \${filename}_b0_after.nii.gz images/\${filename}__eddy_topup.nii.gz
+      filename=\$(basename -- "\$b");\
+      filename="\${filename%.*.*}";
+      scil_extract_b0.py --mean --b0_thr 50 \$a \$c \$d \${filename}_b0_before.nii.gz;\
+      scil_extract_b0.py --mean --b0_thr 50 \$b \$c \$d \${filename}_b0_after.nii.gz;\
+      mrcat \${filename}_b0_before.nii.gz \${filename}_b0_after.nii.gz images/\${filename}__eddy_topup.nii.gz
     done
 
     dmriqc_generic.py "Eddy Topup" report_eddy_topup.html\
@@ -981,6 +981,7 @@ Channel
 all_raw_json
   .mix(all_bids_json)
   .collect(sort:true)
+  .ifEmpty('NO_JSON')
   .set{all_json}
 
 Channel
@@ -1016,7 +1017,7 @@ process QC_DWI_Protocol {
         params.run_qc_dwi_protocol
 
     script:
-    def metadata = json.name != [] ? "--metadata json_f" : ''
+    def metadata = json.name != "NO_JSON" ? "--metadata json_f" : ''
     """
     export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
     export OMP_NUM_THREADS=1
