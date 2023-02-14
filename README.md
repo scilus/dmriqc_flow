@@ -14,10 +14,10 @@ QC is available also for raw input structure like BIDS or tractoflow input struc
 ### Build singularity or docker image
 ```
 # Singularity
-sudo singularity build scilus_1.3.0.sif docker://scilus/scilus:1.3.0
+sudo singularity build scilus_1.4.2.sif docker://scilus/scilus:1.4.2
 
 # Docker
-sudo docker pull scilus/scilus:1.3.0
+sudo docker pull scilus/scilus:1.4.2
 ```
 
 ### Nextflow version
