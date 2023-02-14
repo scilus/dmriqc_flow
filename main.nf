@@ -981,7 +981,7 @@ Channel
 all_raw_json
   .mix(all_bids_json)
   .collect(sort:true)
-  .ifEmpty('NO_JSON')
+  .ifEmpty([])
   .set{all_json}
 
 Channel
@@ -1017,14 +1017,16 @@ process QC_DWI_Protocol {
         params.run_qc_dwi_protocol
 
     script:
-    def metadata = json.name != "NO_JSON" ? "--metadata json_f" : ''
+    def metadata = json.name != [] ? "--metadata json_f" : ''
+    def moves = json.name != [] ? "bval bvec json" : 'bval bvec'
+
     """
     export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
     export OMP_NUM_THREADS=1
     export OPENBLAS_NUM_THREADS=1
 
     mkdir -p {bval_f,bvec_f,json_f}
-    for i in bval bvec json
+    for i in $moves
     do
       mv *\${i} \${i}_f/;
     done
