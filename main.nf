@@ -1019,7 +1019,6 @@ process QC_DWI_Protocol {
     script:
     def metadata = json.name != [] ? "--metadata json_f" : ''
     def moves = json.name != [] ? "bval bvec json" : 'bval bvec'
-
     """
     export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
     export OMP_NUM_THREADS=1
