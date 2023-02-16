@@ -666,26 +666,21 @@ process QC_Tracking {
         params.run_qc_tracking
 
     script:
-    mkdir -p {anat,trks}
-    mv *warped.nii.gz anat/
-    mv *.trk trks/
-
-    if (params.run_qc_extractor_mni){
+    if (params.run_qc_extractor_mni)
         """
-        dmriqc_tractogram.py report_tracking_mni.html --tractograms trk --t1 anat
+        mkdir -p {anat,trks}
+        mv *.nii.gz anat/
+        mv *.trk trks/
+        dmriqc_tractogram.py report_tracking_mni.html --tractograms trks --t1 anat
         """
-    }
-    else if (params.run_qc_extractor_orig){
+    else if (params.run_qc_extractor_orig)
         """
-        dmriqc_tractogram.py report_tracking_orig.html --tractograms trk --t1 anat
+        dmriqc_tractogram.py report_tracking_orig.html --tractograms trks --t1 anat
         """
-    }
     else
-    {
         """
-        dmriqc_tractogram.py report_tracking.html --tractograms trk --t1 anat
+        dmriqc_tractogram.py report_tracking.html --tractograms trks --t1 anat
         """
-    }
 }
 
 Channel
@@ -1173,6 +1168,7 @@ else if(params.run_qc_extractor_orig_extended){
      .set{bundles_anat_for_screenshots}
 }
 
+
 process Screenshots_Bundles {
     cpus 2
     stageInMode 'copy'
@@ -1218,7 +1214,7 @@ process QC_Bundles {
         params.run_qc_rbx || params.run_qc_extractor_extended
 
     script:
-    if (params.run_qc_rbx){
+    if (params.run_qc_rbx)
         """
         export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
         export OMP_NUM_THREADS=1
@@ -1232,8 +1228,7 @@ process QC_Bundles {
 
         dmriqc_from_screenshot.py report_rbx.html --data ${b_names} --sym_link
         """
-    }
-    else if(params.run_qc_extractor_mni_extended){
+    else if(params.run_qc_extractor_mni_extended)
         """
         export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
         export OMP_NUM_THREADS=1
@@ -1247,8 +1242,7 @@ process QC_Bundles {
 
         dmriqc_from_screenshot.py report_extractor_mni_extended.html --data ${b_names} --sym_link
         """
-    }
-    else if(params.run_qc_extractor_orig_extended){
+    else if(params.run_qc_extractor_orig_extended)
         """
         export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
         export OMP_NUM_THREADS=1
@@ -1262,7 +1256,7 @@ process QC_Bundles {
 
         dmriqc_from_screenshot.py report_extractor_orig_extended.html --data ${b_names} --sym_link
         """
-    }
+}
 
     Channel.fromPath("$input/**/Register_Lesions_T1s/*space.nii.gz", maxDepth:4)
         .collect(sort:true)
