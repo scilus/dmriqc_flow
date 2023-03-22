@@ -1,7 +1,6 @@
 #!/usr/bin/env nextflow
 
 params.input = false
-params.fa_template = false
 params.help = false
 
 if(params.help) {
@@ -39,14 +38,20 @@ for (String item : theArr) {
    profiles.add(item);
 }
 
-if (profiles.get(0) != "input_qc" && profiles.get(0) != "tractoflow_qc_light" && profiles.get(0) != "tractoflow_qc_all" && profiles.get(0) != "rbx_qc" && profiles.get(0) != "disconets_qc")
+if ( profiles.get(0) != "input_qc" && profiles.get(0) != "tractoflow_qc_light" && profiles.get(0) != "tractoflow_qc_all" && profiles.get(0) != "rbx_qc" && profiles.get(0) != "disconets_qc" && profiles.get(0) != "extractorflow_qc_mni" && profiles.get(0) != "extractorflow_qc_orig" && profiles.get(0) != "extractorflow_qc_mni_extended" && profiles.get(0) != "extractorflow_qc_orig_extended")
 {
-    error "Error ~ Please select a profile (-profile): input_qc, tractoflow_qc_light, tractoflow_qc_all, rbx_qc or disconets_qc."
+    error "Error ~ Please select a profile (-profile): input_qc, extractorflow, tractoflow_qc_light or tractoflow_qc_all or extractorflow_qc_mni (_extended) or extractorflow_qc_orig (_extended)."
 }
 
 
 if (params.input){
     log.info "Input: $params.input"
+    log.info "Run qc extractor: $params.run_qc_extractor"
+    log.info "Run qc extractor extended: $params.run_qc_extractor_extended"
+    log.info "Run qc extractor mni: $params.run_qc_extractor_mni"
+    log.info "Run qc extractor mni extended: $params.run_qc_extractor_mni_extended"
+    log.info "Run qc extractor orig: $params.run_qc_extractor_orig"
+    log.info "Run qc extractor orig extended: $params.run_qc_extractor_orig_extended"
     input = file(params.input)
 }
 else {
@@ -657,26 +662,66 @@ process QC_FODF {
     """
 }
 
-Channel
-    .fromPath("$input/**/*_Tracking/*.trk", maxDepth:3)
-    .map{["report", it.parent.parent.name, it]}
-    .set{tractograms}
 
 Channel
     .fromPath("$input/**/Register_T1/*t1_warped.nii.gz", maxDepth:3)
     .collect(sort:true)
     .set{t1_warped_for_registration}
 
-Channel
-    .fromPath("$input/**/Register_T1/*t1_warped.nii.gz", maxDepth:3)
-    .map{["report", it.parent.parent.name, it]}
-    .set{t1_warped_for_tracking}
 
-tractograms
-    .combine(t1_warped_for_tracking, by:[0,1])
-    .groupTuple(sort:true)
-    .map{it -> it[2..-1]}
-    .set{tracking_t1}
+if (params.run_qc_extractor_mni){
+    Channel
+        .fromPath("$input/final_outputs/**/mni_space/*__plausible_mni_space.trk", maxDepth:5)
+        .map{["report", it.parent.parent.name, it]}
+        .set{trk_extractor}
+
+    Channel
+        .fromPath("$input/final_outputs/**/mni_space/*__t1_mni_space.nii.gz", maxDepth:5)
+        .map{["report", it.parent.parent.name, it]}
+        .set{t1_extractor}
+
+    trk_extractor
+        .combine(t1_extractor, by:[0,1])
+        .groupTuple()
+        .map{it -> it[2..-1]}
+        .set{tracking_t1}
+}
+else if (params.run_qc_extractor_orig){
+    Channel
+        .fromPath("$input/final_outputs/**/orig_space/*__plausible_orig_space.trk", maxDepth:5)
+        .map{["report", it.parent.parent.name, it]}
+        .set{trk_extractor}
+
+    Channel
+        .fromPath("$input/final_outputs/**/orig_space/*__t1_orig_space.nii.gz", maxDepth:5)
+        .map{["report", it.parent.parent.name, it]}
+        .set{t1_extractor}
+
+    trk_extractor
+        .combine(t1_extractor, by:[0,1])
+        .groupTuple()
+        .map{it -> it[2..-1]}
+        .set{tracking_t1}
+}
+else
+{
+  Channel
+      .fromPath("$input/**/*_Tracking/*.trk", maxDepth:3)
+      .map{["report", it.parent.parent.name, it]}
+      .set{tractograms}
+
+  Channel
+      .fromPath("$input/**/Register_T1/*t1_warped.nii.gz", maxDepth:3)
+      .map{["report", it.parent.parent.name, it]}
+      .set{t1_warped_for_tracking}
+
+  tractograms
+      .combine(t1_warped_for_tracking, by:[0,1])
+      .groupTuple()
+      .map{it -> it[2..-1]}
+      .set{tracking_t1}
+}
+
 
 process QC_Tracking {
     cpus params.tracking_nb_threads
@@ -685,7 +730,7 @@ process QC_Tracking {
     set file(tracking), file("?????warped.nii.gz") from tracking_t1
 
     output:
-    file "report_tracking.html"
+    file "report_*.html"
     file "data"
     file "libs"
 
@@ -693,13 +738,21 @@ process QC_Tracking {
         params.run_qc_tracking
 
     script:
-    """
-    mkdir -p {anat,trks}
-    mv *warped.nii.gz anat/
-    mv *.trk trks/
-
-    dmriqc_tractogram.py report_tracking.html --tractograms trks --t1 anat
-    """
+    if (params.run_qc_extractor_mni)
+        """
+        mkdir -p {anat,trks}
+        mv *.nii.gz anat/
+        mv *.trk trks/
+        dmriqc_tractogram.py report_tracking_mni.html --tractograms trks --t1 anat
+        """
+    else if (params.run_qc_extractor_orig)
+        """
+        dmriqc_tractogram.py report_tracking_orig.html --tractograms trks --t1 anat
+        """
+    else
+        """
+        dmriqc_tractogram.py report_tracking.html --tractograms trks --t1 anat
+        """
 }
 
 Channel
@@ -1130,25 +1183,67 @@ process QC_Raw_DWI {
     """
 }
 
-anat_rbx = Channel
-    .fromFilePairs("$params.input/**/Register_Anat/*native_anat.nii.gz",
-              maxDepth: 2,
-              size: 1,
-              flat: true) { it.parent.parent.name }
+bundles_anat_for_screenshots = Channel.empty()
+if (params.run_qc_rbx){
 
-bundles_rbx = Channel
-    .fromFilePairs("$params.input/**/Clean_Bundles/*.trk",
-                   maxDepth: 2,
-                   size: -1) { it.parent.parent.name }
+    anat_for_bundles = Channel
+        .fromFilePairs("$params.input/**/Register_Anat/*native_anat.nii.gz",
+                       maxDepth: 2,
+                       size: 1,
+                       flat: true) { it.parent.parent.name }
 
-bundles_rbx
-    .flatMap{ sid, bundles -> bundles.collect{ [sid, it] } }
-    .map{sid, bundle -> [sid, bundle.getName().replace(sid, "").replace(".trk", "").replace("__", "").replace("_L", "").replace("_R", ""), bundle]}
-    .groupTuple(by: [0,1])
-    .combine(anat_rbx, by:0)
-    .set{bundles_anat_for_screenshots}
+    bundles = Channel
+        .fromFilePairs("$params.input/**/Clean_Bundles/*.trk",
+                       maxDepth: 2,
+                       size: -1) { it.parent.parent.name }
 
-process Screenshots_RBx {
+    bundles
+        .flatMap{ sid, bundles -> bundles.collect{ [sid, it] } }
+        .map{sid, bundle -> [sid, bundle.getName().replace(sid, "").replace(".trk", "").replace("__", "").replace("_L", "").replace("_R", ""), bundle]}
+        .groupTuple(by: [0,1])
+        .combine(anat_for_bundles, by:0)
+        .into{bundles_anat_for_screenshots}
+}
+else if (params.run_qc_extractor_mni_extended){
+    anat_for_bundles = Channel
+        .fromFilePairs("$input/final_outputs/**/mni_space/*__t1_mni_space.nii.gz",
+                       maxDepth: 2,
+                       size: 1,
+                       flat: true) { it.parent.parent.name }
+
+    bundles = Channel
+        .fromFilePairs("$input/final_outputs/**/mni_space/bundles/*_mni_space.trk",
+                       maxDepth: 5,
+                       size: -1) {it.parent.parent.parent.name}
+    bundles
+      .flatMap{ sid, bundles -> bundles.collect{ [sid, it] } }
+      .map{sid, bundle -> [sid, bundle.getName().replace(sid, "").replace(".trk", "").replace("__", "").replace("_L", "").replace("_R", "").replace("_mni_space", ""), bundle]}
+      .groupTuple(by: [0,1])
+      .combine(anat_for_bundles, by:0)
+      .set{bundles_anat_for_screenshots}
+}
+else if(params.run_qc_extractor_orig_extended){
+  anat_for_bundles = Channel
+      .fromFilePairs("$input/final_outputs/**/orig_space/*__t1_orig_space.nii.gz",
+                     maxDepth: 2,
+                     size: 1,
+                     flat: true) { it.parent.parent.name }
+
+  bundles = Channel
+      .fromFilePairs("$input/final_outputs/**/orig_space/bundles/*_orig_space.trk",
+                     maxDepth: 5,
+                     size: -1) {it.parent.parent.parent.name}
+
+  bundles
+     .flatMap{ sid, bundles -> bundles.collect{ [sid, it] } }
+     .map{sid, bundle -> [sid, bundle.getName().replace(sid, "").replace(".trk", "").replace("__", "").replace("_L", "").replace("_R", "").replace("_orig_space", ""), bundle]}
+     .groupTuple(by: [0,1])
+     .combine(anat_for_bundles, by:0)
+     .set{bundles_anat_for_screenshots}
+}
+
+
+process Screenshots_Bundles {
     cpus 2
     stageInMode 'copy'
     publishDir {"./results_QC/$task.process/${sid}"}
@@ -1160,7 +1255,7 @@ process Screenshots_RBx {
     set b_name, val("QC"), "${sid}__${b_name}.png" into screenshots_for_report
 
     when:
-        params.run_qc_rbx
+        params.run_qc_rbx || params.run_qc_extractor_extended || params.run_qc_extractor_orig_extended
 
     script:
     """
@@ -1169,7 +1264,7 @@ process Screenshots_RBx {
     export OPENBLAS_NUM_THREADS=1
 
     mrconvert $anat anat.nii.gz
-    scil_visualize_bundles_mosaic.py anat.nii.gz $bundles ${sid}__${b_name}.png -f --light_screenshot --no_information
+    scil_visualize_bundles_mosaic.py anat.nii.gz $bundles ${sid}__${b_name}.png -f --light_screenshot --no_bundle_name
     """
 }
 
@@ -1178,185 +1273,216 @@ screenshots_for_report
     .map{b_names, _, bundles -> [b_names.unique().join(",").replaceAll(",", " "), bundles].toList()}
     .set{screenshots_for_qc_rbx}
 
-process QC_RBx {
+process QC_Bundles {
     cpus 1
 
     input:
     set b_names, file(bundles) from screenshots_for_qc_rbx
 
     output:
-    file "report_rbx.html"
+    file "report_*.html"
     file "data"
     file "libs"
 
     when:
-        params.run_qc_rbx
+        params.run_qc_rbx || params.run_qc_extractor_extended
 
     script:
-    """
-    export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
-    export OMP_NUM_THREADS=1
-    export OPENBLAS_NUM_THREADS=1
-    for i in $b_names;
-    do
-        echo \${i}
-        mkdir -p \${i}
-        mv *\${i}.png \${i}/
-    done
-    dmriqc_from_screenshot.py report_rbx.html --data ${b_names} --sym_link
-    """
+    if (params.run_qc_rbx)
+        """
+        export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
+        export OMP_NUM_THREADS=1
+        export OPENBLAS_NUM_THREADS=1
+        for i in $b_names;
+        do
+            echo \${i}
+            mkdir -p \${i}
+            mv *\${i}.png \${i}
+        done
+
+        dmriqc_from_screenshot.py report_rbx.html --data ${b_names} --sym_link
+        """
+    else if(params.run_qc_extractor_mni_extended)
+        """
+        export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
+        export OMP_NUM_THREADS=1
+        export OPENBLAS_NUM_THREADS=1
+        for i in $b_names;
+        do
+            echo \${i}
+            mkdir -p \${i}
+            mv *\${i}.png \${i}
+        done
+
+        dmriqc_from_screenshot.py report_extractor_mni_extended.html --data ${b_names} --sym_link
+        """
+    else if(params.run_qc_extractor_orig_extended)
+        """
+        export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
+        export OMP_NUM_THREADS=1
+        export OPENBLAS_NUM_THREADS=1
+        for i in $b_names;
+        do
+            echo \${i}
+            mkdir -p \${i}
+            mv *\${i}.png \${i}
+        done
+
+        dmriqc_from_screenshot.py report_extractor_orig_extended.html --data ${b_names} --sym_link
+        """
 }
 
-Channel.fromPath("$input/**/Register_Lesions_T1s/*space.nii.gz", maxDepth:4)
-    .collect(sort:true)
-    .set{t1_lesions_registered}
+    Channel.fromPath("$input/**/Register_Lesions_T1s/*space.nii.gz", maxDepth:4)
+        .collect(sort:true)
+        .set{t1_lesions_registered}
 
-Channel
-    .fromPath("$input/*_labels.nii.gz")
-    .collect()
-    .into{labels_for_register_lesions_qc;labels_for_register_tractograms_qc}
+    Channel
+        .fromPath("$input/*_labels.nii.gz")
+        .collect()
+        .into{labels_for_register_lesions_qc;labels_for_register_tractograms_qc}
 
-process QC_Register_Lesions_to_Template {
-    cpus params.eddy_topup_nb_threads
+    process QC_Register_Lesions_to_Template {
+        cpus params.eddy_topup_nb_threads
 
-    input:
-    file(t1s) from t1_lesions_registered
-    file(template) from labels_for_register_lesions_qc
+        input:
+        file(t1s) from t1_lesions_registered
+        file(template) from labels_for_register_lesions_qc
 
-    output:
-    file "report_register_to_template.html"
-    file "data"
-    file "libs"
+        output:
+        file "report_register_to_template.html"
+        file "data"
+        file "libs"
 
-    when:
-    params.run_t1_register_to_template
+        when:
+        params.run_t1_register_to_template
 
-    script:
-    """
-    export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
-    export OMP_NUM_THREADS=1
-    export OPENBLAS_NUM_THREADS=1
+        script:
+        """
+        export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
+        export OMP_NUM_THREADS=1
+        export OPENBLAS_NUM_THREADS=1
 
-    dmriqc_labels.py report_register_to_template.html\
-    --t1 ${t1s}\
-    --label ${template} \
-    --skip $params.eddy_topup_skip\
-    --nb_threads $params.eddy_topup_nb_threads\
-    --nb_columns $params.eddy_topup_nb_columns\
-    --compute_lut
-    """
-}
+        dmriqc_labels.py report_register_to_template.html\
+        --t1 ${t1s}\
+        --label ${template} \
+        --skip $params.eddy_topup_skip\
+        --nb_threads $params.eddy_topup_nb_threads\
+        --nb_columns $params.eddy_topup_nb_columns\
+        --compute_lut
+        """
+    }
 
-Channel.fromPath("$input/**/Register_Tractograms_T1s/*space.nii.gz", maxDepth:4)
-    .collect(sort:true)
-    .set{t1_tractograms_registered}
+    Channel.fromPath("$input/**/Register_Tractograms_T1s/*space.nii.gz", maxDepth:4)
+        .collect(sort:true)
+        .set{t1_tractograms_registered}
 
-process QC_Register_Tractograms_to_Template {
-    cpus params.eddy_topup_nb_threads
+    process QC_Register_Tractograms_to_Template {
+        cpus params.eddy_topup_nb_threads
 
-    input:
-    file(t1s) from t1_tractograms_registered
-    file(template) from labels_for_register_tractograms_qc
+        input:
+        file(t1s) from t1_tractograms_registered
+        file(template) from labels_for_register_tractograms_qc
 
-    output:
-    file "report_register_to_template.html"
-    file "data"
-    file "libs"
+        output:
+        file "report_register_to_template.html"
+        file "data"
+        file "libs"
 
-    when:
-    params.run_t1_register_to_template
+        when:
+        params.run_t1_register_to_template
 
-    script:
-    """
-    export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
-    export OMP_NUM_THREADS=1
-    export OPENBLAS_NUM_THREADS=1
+        script:
+        """
+        export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
+        export OMP_NUM_THREADS=1
+        export OPENBLAS_NUM_THREADS=1
 
-    dmriqc_labels.py report_register_to_template.html\
-    --t1 ${t1s}\
-    --label ${template} \
-    --skip $params.eddy_topup_skip\
-    --nb_threads $params.eddy_topup_nb_threads\
-    --nb_columns $params.eddy_topup_nb_columns\
-    --compute_lut
-    """
-}
+        dmriqc_labels.py report_register_to_template.html\
+        --t1 ${t1s}\
+        --label ${template} \
+        --skip $params.eddy_topup_skip\
+        --nb_threads $params.eddy_topup_nb_threads\
+        --nb_columns $params.eddy_topup_nb_columns\
+        --compute_lut
+        """
+    }
 
-Channel.fromPath("$input/**/**/Compute_Connectivity/Connectivity_w_lesion/*lesion_sc.npy",
-    maxDepth:6)
-    .map{[it.parent.parent.parent.parent.name, it.parent.parent.parent.name, it]}
-    .set{matrice_lesion_for_combine}
+    Channel.fromPath("$input/**/**/Compute_Connectivity/Connectivity_w_lesion/*lesion_sc.npy",
+        maxDepth:6)
+        .map{[it.parent.parent.parent.parent.name, it.parent.parent.parent.name, it]}
+        .set{matrice_lesion_for_combine}
 
-Channel.fromPath("$input/**/**/Compute_Connectivity/*atlas_sc.npy",
-    maxDepth:5)
-    .map{[it.parent.parent.parent.name, it.parent.parent.name, it]}
-    .set{matrice_atlas_for_combine}
+    Channel.fromPath("$input/**/**/Compute_Connectivity/*atlas_sc.npy",
+        maxDepth:5)
+        .map{[it.parent.parent.parent.name, it.parent.parent.name, it]}
+        .set{matrice_atlas_for_combine}
 
-matrice_atlas_for_combine.join(matrice_lesion_for_combine, by: [0,1])
-    .set{matrice_for_create_csv}
+    matrice_atlas_for_combine.join(matrice_lesion_for_combine, by: [0,1])
+        .set{matrice_for_create_csv}
 
-Channel.fromPath("$input/*labels.txt")
-    .set{labels}
+    Channel.fromPath("$input/*labels.txt")
+        .set{labels}
 
-matrice_for_create_csv.combine(labels)
-    .set{matrices_labels_for_create_csv}
+    matrice_for_create_csv.combine(labels)
+        .set{matrices_labels_for_create_csv}
 
-process Create_disconets_csv {
-    cpus 1
-    input:
-    set sid, tid, file(before_mat), file(after_mat), file(label_atlas) from matrices_labels_for_create_csv
+    process Create_disconets_csv {
+        cpus 1
+        input:
+        set sid, tid, file(before_mat), file(after_mat), file(label_atlas) from matrices_labels_for_create_csv
 
-    output:
-    file("${sid}_${tid}_sc_ratio.csv") into stats_to_be_collected
+        output:
+        file("${sid}_${tid}_sc_ratio.csv") into stats_to_be_collected
 
-    script:
+        script:
 
-    before_m="${before_mat}"
-    after_m="${after_mat}"
-    labels="${label_atlas}"
-    output_file="${sid}_${tid}_sc_ratio.csv"
+        before_m="${before_mat}"
+        after_m="${after_mat}"
+        labels="${label_atlas}"
+        output_file="${sid}_${tid}_sc_ratio.csv"
 
-    template "disconets_qc_analysis.py"
-}
+        template "disconets_qc_analysis.py"
+    }
 
-Channel.fromPath("$input/**/**/Compute_Connectivity/Connectivity_w_lesion/*lesion_sc_matrix.png", maxDepth:6)
-    .collect(sort: true)
-    .map{[it.parent.parent.parent.parent.name, it]}
-    .map{sid, png -> [sid.unique().join(",").replaceAll(",", " "), png].toList()}
-    .set{lesion_png}
+    Channel.fromPath("$input/**/**/Compute_Connectivity/Connectivity_w_lesion/*lesion_sc_matrix.png", maxDepth:6)
+        .collect(sort: true)
+        .map{[it.parent.parent.parent.parent.name, it]}
+        .map{sid, png -> [sid.unique().join(",").replaceAll(",", " "), png].toList()}
+        .set{lesion_png}
 
 
-stats_to_be_collected
-  .collect()
-  .set{stats_for_matrix}
+    stats_to_be_collected
+      .collect()
+      .set{stats_for_matrix}
 
-process QC_SC_Matrices {
-    cpus 1
+    process QC_SC_Matrices {
+        cpus 1
 
-    input:
-    set sid, file(png) from lesion_png
-    file(stats) from stats_for_matrix
+        input:
+        set sid, file(png) from lesion_png
+        file(stats) from stats_for_matrix
 
-    output:
-    file "report_sc_matrices.html"
-    file "data"
-    file "libs"
+        output:
+        file "report_sc_matrices.html"
+        file "data"
+        file "libs"
 
-    when:
-    params.run_qc_matrices
+        when:
+        params.run_qc_matrices
 
-    script:
-    """
-    export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
-    export OMP_NUM_THREADS=1
-    export OPENBLAS_NUM_THREADS=1
-    ls -al
-    for i in ${sid};
-    do
-      echo \${i}
-      mkdir -p \${i}
-      mv \${i}*.* \${i}/
-    done
-    dmriqc_from_screenshot.py report_sc_matrices.html --data ${sid} --stats --sym_link
-    """
+        script:
+        """
+        export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
+        export OMP_NUM_THREADS=1
+        export OPENBLAS_NUM_THREADS=1
+        ls -al
+        for i in ${sid};
+        do
+          echo \${i}
+          mkdir -p \${i}
+          mv \${i}*.* \${i}/
+        done
+        dmriqc_from_screenshot.py report_sc_matrices.html --data ${sid} --stats --sym_link
+        """
+
 }

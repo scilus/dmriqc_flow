@@ -22,7 +22,22 @@ PROFILES (using -profile option (e.g. -profile tractoflow_qc_light,cbrain))
     tractoflow_qc_all                   Create QC reports for your TractoFlow results:
                                         Output all steps.
 
-    rbx_qc                              Create QC reports for your rbx-flow results.
+    extractorflow_qc_mni                   Create QC reports for your ExtractorFlow results.
+
+    extractorflow_qc_mni_extended          Create QC reports for your ExtractorFlow results:
+                                        Output only when using --extended.
+
+    extractorflow_qc_orig                  Create QC reports for your ExtractorFlow results:
+                                        Output only when using orig space options.
+
+    extractorflow_qc_orig_extended         Create QC reports for your ExtractorFlow results:
+                                        Output only when using --extended and orig space options.
+
+    rbx_qc                              Create QC reports for your rbx-flow results
+
+    cbrain                              When this profile is used, Nextflow will copy all the output files in publishDir and not use symlinks.
+                                        cbrain profile should be used as a second profile (e.g -profile input_qc,cbrain)
+
 
     disconets_qc                       Create QC reports for your disconets_flow results.
 
