@@ -14,12 +14,20 @@ QC is available also for raw input structure like BIDS or tractoflow input struc
 ### Build singularity or docker image
 ```
 # Singularity
-sudo singularity build scilus_1.3.0.sif docker://scilus/scilus:1.3.0
+sudo singularity build scilus_1.4.2.sif docker://scilus/scilus:1.4.2
 
 # Docker
-sudo docker pull scilus/scilus:1.3.0
+sudo docker pull scilus/scilus:1.4.2
 ```
 
 ### Nextflow version
 
 Please use nextflow 21.*
+
+If you use this tool for your research, **please cite the following**
+
+```
+G. Theaud and M. Descoteaux,
+“dMRIQCpy: a python-based toolbox for diffusion MRI quality control and beyond”,
+International Symposium in Magnetic Resonance in Medicine (ISMRM 2022).
+```
