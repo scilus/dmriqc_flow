@@ -39,7 +39,7 @@ for (String item : theArr) {
    profiles.add(item);
 }
 
-if (profiles.get(0) != "input_qc" && profiles.get(0) != "tractoflow_qc_light" && profiles.get(0) != "tractoflow_qc_all" && profiles.get(0) != "rbx_qc" && profiles.get(0) != "disconets_qc")
+if (profiles.get(0) != "input_qc" && profiles.get(0) != "tractoflow_qc_light" && profiles.get(0) != "tractoflow_qc_all" && profiles.get(0) != "rbx_qc" && profiles.get(0) != "disconets_qc" & profiles.get(0) != "mouse_qc")
 {
     error "Error ~ Please select a profile (-profile): input_qc, tractoflow_qc_light, tractoflow_qc_all, rbx_qc or disconets_qc."
 }
@@ -83,6 +83,53 @@ Channel
 
 dwi_n4_for_bet.combine(b0_bet_mask_for_bet).set{dwi_mask_for_bet}
 
+
+Channel
+    .fromPath("$input/**/Bet_DWI/*__bet_mask.nii.gz", maxDepth:3)
+    .collect(sort:true)
+    .map{[it]}
+    .set{dwi_mouse_mask_for_bet}
+
+Channel
+    .fromPath("$input/**/Bet_DWI/*__dwi_bet.nii.gz",
+      maxDepth:3)
+    .collect(sort:true)
+    .map{[it]}
+    .set{dwi_mouse_for_bet}
+
+
+process QC_Brain_Extraction_Mouse {
+    cpus params.bet_t1_nb_threads
+
+    input:
+    tuple file(dwi), file(mask) from dwi_mouse_for_bet
+
+    output:
+    file "report_dwi_bet.html"
+    file "data"
+    file "libs"
+
+    when:
+        params.run_qc_bet_mouse
+
+    script:
+    """
+    export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
+    export OMP_NUM_THREADS=1
+    export OPENBLAS_NUM_THREADS=1
+
+    mkdir -p {no_bet,bet_mask}
+    mv *__bet_mask.nii.gz bet_mask/
+    mv *__dwi_bet.nii.gz no_bet/
+
+    dmriqc_brain_extraction.py "Brain Extraction DWI Mouse" report_dwi_bet.html\
+    --no_bet no_bet\
+    --bet_mask bet_mask\
+    --skip $params.bet_dwi_skip\
+    --nb_threads $params.bet_dwi_nb_threads\
+    --nb_columns $params.bet_dwi_nb_columns
+    """
+}
 process QC_Brain_Extraction_DWI {
     cpus params.bet_dwi_nb_threads
 
