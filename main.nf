@@ -39,9 +39,9 @@ for (String item : theArr) {
    profiles.add(item);
 }
 
-if (profiles.get(0) != "input_qc" && profiles.get(0) != "tractoflow_qc_light" && profiles.get(0) != "tractoflow_qc_all" && profiles.get(0) != "rbx_qc" && profiles.get(0) != "disconets_qc")
+if (profiles.get(0) != "input_qc" && profiles.get(0) != "tractoflow_qc_light" && profiles.get(0) != "tractoflow_qc_all" && profiles.get(0) != "rbx_qc" && profiles.get(0) != "disconets_qc" && profiles.get(0) != "mouse_qc")
 {
-    error "Error ~ Please select a profile (-profile): input_qc, tractoflow_qc_light, tractoflow_qc_all, rbx_qc or disconets_qc."
+    error "Error ~ Please select a profile (-profile): input_qc, tractoflow_qc_light, tractoflow_qc_all, rbx_qc, disconets_qc or mouse_qc"
 }
 
 
@@ -546,6 +546,79 @@ process QC_DTI {
     --residual residual\
     --evecs_v1 evecs_v1\
     --wm wm --gm gm --csf csf\
+    --skip $params.dti_skip\
+    --nb_threads $params.dti_nb_threads\
+    --nb_columns $params.dti_nb_columns
+    """
+}
+
+dti_metrics_mouse = Channel
+    .fromFilePairs("$input/**/DTI_Metrics/*{fa.nii.gz,md.nii.gz,rd.nii.gz,ad.nii.gz,evecs_v1.nii.gz}",
+                    size: 5,
+                    maxDepth:3,
+                    flat:true)
+
+(fa, md, rd, ad, evecs) = dti_metrics_mouse
+    .map{sid, ad, evecs, fa, md, rd -> [tuple(fa),
+                              tuple(md),
+                              tuple(rd),
+                              tuple(ad),
+                              tuple(evecs)]}
+    .separate(5)
+
+fa
+    .flatten()
+    .collect(sort:true)
+    .set{fa_for_dti_qa}
+md
+    .flatten()
+    .collect(sort:true)
+    .set{md_for_dti_qa}
+rd
+    .flatten()
+    .collect(sort:true)
+    .set{rd_for_dti_qa}
+ad
+    .flatten()
+    .collect(sort:true)
+    .set{ad_for_dti_qa}
+evecs
+    .flatten()
+    .collect(sort:true)
+    .set{evecs_for_dti_qa}
+
+process QC_DTI_mouse {
+    cpus params.dti_nb_threads
+
+    input:
+    file(fa) from fa_for_dti_qa
+    file(md) from md_for_dti_qa
+    file(rd) from rd_for_dti_qa
+    file(ad) from ad_for_dti_qa
+    file(evecs_v1) from evecs_for_dti_qa
+
+    output:
+    file "report_dti.html"
+    file "data"
+    file "libs"
+
+    when:
+        params.run_qc_dti_mouse
+
+    script:
+    """
+    export ITK_GLOBAL_DEFAULT_NUMBER_OF_THREADS=1
+    export OMP_NUM_THREADS=1
+    export OPENBLAS_NUM_THREADS=1
+
+    mkdir -p {fa,md,rd,ad,evecs_v1}
+
+    dmriqc_dti.py report_dti.html\
+    --fa fa\
+    --md md\
+    --rd rd\
+    --ad ad\
+    --evecs_v1 evecs_v1\
     --skip $params.dti_skip\
     --nb_threads $params.dti_nb_threads\
     --nb_columns $params.dti_nb_columns
